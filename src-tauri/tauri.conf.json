@@ -31,7 +31,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE0REE0MjdCQTlENkFGQUYKUldTdnI5YXBlMExhRkF6azFUaWpiSFlKRUhaUEttUFR0U2I0ZWdkM0VjMlFOK0pMb3c1dVZHZ0EK",
       "endpoints": [
-        "https://github.com/andrewyur/md-sticky/releases/latest/download/version.json"
+        "https://github.com/andrewyur/md-sticky/releases/latest/download/latest.json"
       ]
     }
   }
