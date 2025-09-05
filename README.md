@@ -39,3 +39,4 @@ Default editor shortcuts (Cmd+X, Cmd+V, Cmd+C) are enabled
 | `Cmd + F`                         | Resize note to text                                                                                 |
 | `Cmd + Alt + <Arrow Key>`         | Snap Note (Move window in direction until it aligns with the nearest fully overlapping window edge) |
 | `Cmd + Shift + Alt + <Arrow Key>` | Partially Snap Note (Move window in direction until it aligns with the nearest window edge)         |
+
