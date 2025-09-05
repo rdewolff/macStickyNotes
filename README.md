@@ -1,6 +1,7 @@
 # md-sticky
 
-<video src="https://github.com/andrewyur/md-sticky/raw/refs/heads/main/static/Demo%20Video.mp4" autoplay controls loop></video>
+https://github.com/user-attachments/assets/7b61d4fa-8e2a-4b80-af09-37120dd7e8cb
+
 
 ## About
 
