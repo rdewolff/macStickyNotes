@@ -40,7 +40,7 @@ pub fn load_stickies(app: &AppHandle) -> Result<(), anyhow::Error> {
         });
     };
 
-    store.clear();
+    // store.clear();
     Ok(())
 }
 
