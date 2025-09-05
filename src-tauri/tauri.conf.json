@@ -1,80 +1,38 @@
 {
-  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "md-sticky",
+  "version": "1.0.0",
+  "identifier": "com.purple.mdsticky",
   "build": {
-    "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
-    "devPath": "http://localhost:5173",
-    "distDir": "../build"
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../build"
   },
-  "package": {
-    "productName": "md-sticky",
-    "version": "0.4.2"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "clipboard": {
-        "all": true
-      },
-      "window": {
-        "all": false,
-        "close": true,
-        "hide": true,
-        "show": true,
-        "maximize": true,
-        "minimize": true,
-        "unmaximize": true,
-        "unminimize": true,
-        "startDragging": true,
-        "setPosition": true,
-        "setSize": true
-      }
-    },
-    "bundle": {
-      "active": true,
-      "category": "DeveloperTool",
-      "copyright": "",
-      "deb": {
-        "depends": []
-      },
-      "externalBin": [],
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "identifier": "md-sicky",
-      "longDescription": "",
-      "macOS": {
-        "entitlements": null,
-        "exceptionDomain": "",
-        "frameworks": [],
-        "providerShortName": null,
-        "signingIdentity": null
-      },
-      "resources": [],
-      "shortDescription": "",
-      "targets": "all",
-      "windows": {
-        "certificateThumbprint": null,
-        "digestAlgorithm": "sha256",
-        "timestampUrl": ""
-      }
-    },
+  "app": {
+    "windows": [ ],
     "security": {
       "csp": null
-    },
-    "updater": {
-      "active": false
-    },
-    "windows": [
-      {
-        "title": "md-sticky",
-        "visible": false,
-        "decorations": false
-      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE0REE0MjdCQTlENkFGQUYKUldTdnI5YXBlMExhRkF6azFUaWpiSFlKRUhaUEttUFR0U2I0ZWdkM0VjMlFOK0pMb3c1dVZHZ0EK",
+      "endpoints": [
+        "https://github.com/andrewyur/md-sticky/releases/latest/download/version.json"
+      ]
+    }
   }
 }

@@ -1,190 +1,112 @@
 <script lang="ts">
   import Editor from "$lib/Editor.svelte";
   import { onMount } from "svelte";
-  import "./page.css";
+  import { webviewWindow } from "@tauri-apps/api";
+  import { invoke } from "@tauri-apps/api/core";
+
+  const colors = [
+    "#fff9b1",
+    "#81B7DD",
+    "#65A65B",
+    "#AAD2CA",
+    "#98C260",
+    "#E1A1B1",
+    "#B98CB3",
+  ];
+  const appWindow = webviewWindow.getCurrentWebviewWindow();
+
+  let colorMenuOpen = $state(false);
+  let titlebarHovered = $state(false);
+
+  function closeNote() {
+    invoke("close_window")
+  }
+
+  function toggleColorMenu() {
+    colorMenuOpen = !colorMenuOpen;
+  }
+
+  function handleColorClick(e: MouseEvent) {
+    document.body.style.backgroundColor = (
+      e.target as HTMLDivElement
+    ).style.backgroundColor;
+    toggleColorMenu();
+  }
+
+  appWindow.listen("tauri://focus", (p) => {
+    invoke("bring_all_to_front")
+    document.body.classList.add("focused")
+    appWindow.setAlwaysOnTop(true);
+  })
+  
+  appWindow.listen("tauri://blur", () => {
+    titlebarHovered = false
+    document.body.classList.remove("focused")
+    appWindow.setAlwaysOnTop(false);
+  })
 
   onMount(async () => {
-    const { appWindow } = await import("@tauri-apps/api/window");
-    const { invoke } = await import("@tauri-apps/api/tauri");
-
-    document.body.style.backgroundColor = "#fff9b1";
-
-    async function fetchColors() {
-      return (await invoke("get_colors")) as string[];
+    // @ts-expect-error
+    if (!window.__STICKY_INIT__) {
+      document.body.classList.add("focused") // window is focused on creation by default, except when initialized
     }
 
-    async function saveColor(selectedColor: string) {
-      await invoke("add_color", { color: selectedColor });
-    }
-
-    document
-      .getElementById("titlebar-close")
-      ?.addEventListener("click", async () => {
-        await invoke("remove_window", { label: appWindow.label });
-        appWindow.close();
-      });
-
-    let colorMenuOpen = false;
-    let colorPickerOpen = false;
-    let hoverStay = false;
-
-    async function openColorMenu() {
-      const target = document.getElementById(
-        "titlebar-color"
-      ) as HTMLDivElement;
-
-      document.getElementById("titlebar")!.classList.add("hover");
-      hoverStay = true;
-
-      let colors = await fetchColors();
-
-      // thank you stackOverFlow!
-      const rgba2hex = (rgba: string) =>
-        `#${(
-          rgba.match(
-            /^rgb?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+\.{0,1}\d*))?\)$/
-          ) ?? []
-        )
-          .slice(1)
-          .map((n, i) =>
-            (i === 3 ? Math.round(parseFloat(n) * 255) : parseFloat(n))
-              .toString(16)
-              .padStart(2, "0")
-              .replace("NaN", "")
-          )
-          .join("")}`;
-
-      colors = colors.filter(
-        (c) =>
-          c.toLowerCase() !=
-          rgba2hex(document.body.style.backgroundColor).toLowerCase()
-      );
-
-      colors.forEach((color) => {
-        const colorBox = document.createElement("div");
-        colorBox.className = "colorBox";
-        colorBox.style.backgroundColor = color;
-
-        colorBox.addEventListener("click", (e) => {
-          document.body.style.backgroundColor = (
-            e.target as HTMLDivElement
-          ).style.backgroundColor;
-
-          // Delay menu closing by a small amount to allow DOM changes to take effect
-          setTimeout(() => closeColorMenu(), 0);
-        });
-
-        target.appendChild(colorBox);
-      });
-
-      const addButton = document.createElement("img");
-      addButton.src = "https://api.iconify.design/mdi:add.svg";
-      addButton.alt = "pick";
-      addButton.addEventListener("click", (e) => {
-        closeColorMenu();
-
-        (
-          document.getElementById("titlebar-color-icon") as HTMLImageElement
-        ).src = "https://api.iconify.design/mdi:add.svg";
-
-        colorPickerOpen = true;
-
-        document.getElementById("titlebar")!.classList.add("hover");
-        hoverStay = true;
-
-        const textbox = document.createElement("input");
-        textbox.id = "color-picker";
-        textbox.type = "text";
-        textbox.placeholder = "type a hex code";
-
-        target.appendChild(textbox);
-
-        e.stopPropagation();
-      });
-      target.appendChild(addButton);
-
-      colorMenuOpen = true;
-    }
-
-    function closeColorMenu() {
-      const target = document.getElementById(
-        "titlebar-color"
-      ) as HTMLDivElement;
-
-      document.getElementById("titlebar")!.classList.remove("hover");
-      hoverStay = false;
-
-      const icon = document.getElementById("titlebar-color-icon");
-      target.innerHTML = "";
-      if (icon) target.appendChild(icon);
-      colorMenuOpen = false;
-    }
-
-    async function pickColor() {
-      const target = document.getElementById(
-        "color-picker"
-      ) as HTMLInputElement;
-
-      // thanks chatgpt!
-      const hexRegex =
-        /^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6}|[A-Fa-f0-9]{4}|[A-Fa-f0-9]{8})$/;
-      if (hexRegex.test(target.value)) {
-        saveColor(target.value);
-
-        document.body.style.backgroundColor = target.value;
-      }
-
-      if (hexRegex.test(target.value) || target.value.length == 0) {
-        document.getElementById("titlebar")!.classList.remove("hover");
-        hoverStay = false;
-
-        const icon = document.getElementById("titlebar-color-icon");
-        const button = document.getElementById("titlebar-color");
-        if (button) button.removeChild(target);
-        (icon as HTMLImageElement).src =
-          "https://api.iconify.design/mdi:color.svg";
-
-        colorPickerOpen = false;
-      }
-    }
-
-    document
-      .getElementById("titlebar-color-icon")
-      ?.addEventListener("click", async () => {
-        if (colorMenuOpen && !colorPickerOpen) {
-          closeColorMenu();
-        } else if (colorPickerOpen) {
-          pickColor();
-        } else {
-          openColorMenu();
-        }
-      });
-
-    document.getElementById("titlebar")?.addEventListener("mouseover", (e) => {
-      document.getElementById("titlebar")?.classList.add("hover");
-    });
-    document.getElementById("titlebar")?.addEventListener("mouseout", () => {
-      if (!hoverStay)
-        document.getElementById("titlebar")?.classList.remove("hover");
-    });
-    appWindow.listen("tauri://blur", (event) => {
-      if (!hoverStay)
-        document.getElementById("titlebar")?.classList.remove("hover");
-    });
+    document.body.addEventListener("mouseenter", () => titlebarHovered = true);
+    document.body.addEventListener("mouseleave", () => titlebarHovered = false);
   });
 </script>
 
-<div data-tauri-drag-region id="titlebar">
-  <div class="titlebar-button" id="titlebar-close">
+<div data-tauri-drag-region class:hover={titlebarHovered}>
+  <button class="titlebar-button" id="titlebar-close" onclick={closeNote}>
     <img src="https://api.iconify.design/mdi:close.svg" alt="close" />
-  </div>
-  <div class="titlebar-button" id="titlebar-color">
-    <img
-      src="https://api.iconify.design/mdi:color.svg"
-      alt="color"
-      id="titlebar-color-icon"
-    />
-  </div>
+  </button>
+  <button class="titlebar-button" id="titlebar-color" onclick={toggleColorMenu}>
+    <img src="https://api.iconify.design/mdi:color.svg" alt="color" />
+  </button>
+  {#each colors as color}
+    <button
+      class="color"
+      onclick={handleColorClick}
+      aria-label={color}
+      style:background={color}
+      style:visibility={colorMenuOpen ? "visible" : "hidden"}
+    ></button>
+  {/each}
 </div>
 
 <Editor />
+
+<style>
+  div {
+    height: 20px;
+    user-select: none;
+    display: flex;
+    justify-content: flex-start;
+    flex-direction: row-reverse;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    opacity: 0.1;
+    transition: all cubic-bezier(0.165, 0.84, 0.44, 1) 0.25s;
+  }
+
+  .hover {
+    opacity: 1 !important;
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  button {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    height: 20px;
+    width: 20px;
+  }
+
+  img {
+    height: 10px;
+    padding: 5px;
+  }
+</style>
