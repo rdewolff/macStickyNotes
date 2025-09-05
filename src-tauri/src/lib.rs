@@ -1,6 +1,8 @@
 use tauri::App;
 use tauri_plugin_log::log::{self, LevelFilter};
 use tauri_plugin_updater::UpdaterExt;
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+
 
 use crate::commands::*;
 use crate::menu::{create_menu, handle_menu_event};
@@ -22,6 +24,14 @@ fn setup(app: &mut App) -> Result<(), Box<(dyn std::error::Error)>> {
     tauri::async_runtime::spawn(async move {
         update(handle).await.unwrap();
     });
+
+    let autostart_manager = app.autolaunch();
+    if !cfg!(debug_assertions) {
+        autostart_manager.enable()?;
+    } else {
+        autostart_manager.disable()?;
+    }
+    log::info!("registered for autostart? {}", autostart_manager.is_enabled().unwrap());
 
     Ok(())
 }
@@ -52,7 +62,7 @@ async fn update(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
-        .plugin(tauri_plugin_autostart::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(
