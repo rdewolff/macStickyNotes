@@ -1,0 +1,32 @@
+export const manifest = (() => {
+function __memo(fn) {
+	let value;
+	return () => value ??= (value = fn());
+}
+
+return {
+	appDir: "_app",
+	appPath: "_app",
+	assets: new Set([]),
+	mimeTypes: {},
+	_: {
+		client: {start:"_app/immutable/entry/start.Bzc_Q0fp.js",app:"_app/immutable/entry/app.BrTI5h1u.js",imports:["_app/immutable/entry/start.Bzc_Q0fp.js","_app/immutable/chunks/CkIiNAt7.js","_app/immutable/chunks/25g6-NV2.js","_app/immutable/chunks/CRj6ZoC0.js","_app/immutable/entry/app.BrTI5h1u.js","_app/immutable/chunks/CRj6ZoC0.js","_app/immutable/chunks/25g6-NV2.js","_app/immutable/chunks/Bzak7iHL.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		nodes: [
+			__memo(() => import('./nodes/0.js')),
+			__memo(() => import('./nodes/1.js'))
+		],
+		remotes: {
+			
+		},
+		routes: [
+			
+		],
+		prerendered_routes: new Set(["/"]),
+		matchers: async () => {
+			
+			return {  };
+		},
+		server_assets: {}
+	}
+}
+})();

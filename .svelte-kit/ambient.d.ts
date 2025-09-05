@@ -58,7 +58,6 @@ declare module '$env/static/private' {
 	export const SOURCE_DATE_EPOCH: string;
 	export const TAURI_CLI_VERBOSITY: string;
 	export const COLOR: string;
-	export const TAURI_ENV_DEBUG: string;
 	export const builder: string;
 	export const NIX_CFLAGS_COMPILE: string;
 	export const cmakeFlags: string;
@@ -246,7 +245,6 @@ declare module '$env/dynamic/private' {
 		SOURCE_DATE_EPOCH: string;
 		TAURI_CLI_VERBOSITY: string;
 		COLOR: string;
-		TAURI_ENV_DEBUG: string;
 		builder: string;
 		NIX_CFLAGS_COMPILE: string;
 		cmakeFlags: string;
