@@ -1,3 +1,7 @@
+:root {
+    overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   display: flex;
@@ -53,10 +57,14 @@ input:focus {
     min-width: 10px;
 }
 
+.ql-editor {
+    min-height: 100vh;
+}
+
 .focused::after {
     background-color: white;
     mix-blend-mode: difference;
-    position: absolute;
+    position: fixed;
     bottom: 0;
     left: 0;
     width: 100vw;

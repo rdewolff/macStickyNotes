@@ -20,18 +20,21 @@ fn setup(app: &mut App) -> Result<(), Box<(dyn std::error::Error)>> {
     app.set_menu(menu)?;
     app.on_menu_event(handle_menu_event);
 
-    let handle = app.handle().clone();
-    tauri::async_runtime::spawn(async move {
-        update(handle).await.unwrap();
-    });
-
     let autostart_manager = app.autolaunch();
     if !cfg!(debug_assertions) {
-        autostart_manager.enable()?;
+
+        let handle = app.handle().clone();
+        tauri::async_runtime::spawn(async move {
+            update(handle).await.unwrap();
+        });
+
+        if !autostart_manager.is_enabled()? {
+            autostart_manager.enable()?;
+        }
     } else {
         autostart_manager.disable()?;
     }
-    log::info!("registered for autostart? {}", autostart_manager.is_enabled().unwrap());
+    log::info!("registered for autostart? {}", autostart_manager.is_enabled()?);
 
     Ok(())
 }

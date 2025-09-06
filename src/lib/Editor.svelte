@@ -20,14 +20,25 @@
             }
         });
 
+        // @ts-expect-error
+        let init = window.__STICKY_INIT__ as undefined | {contents: string, color: string}
+        if (init) {
+            quill.setContents(JSON.parse(init.contents));
+            document.body.style.backgroundColor = init.color;
+        } else {
+            document.body.style.backgroundColor = "#fff9b1";
+        }
+
         let timeout: undefined | number = $state()
         function debounceChangeEvent() {
             clearTimeout(timeout)
             timeout = setTimeout(() => 
-                invoke("save_contents", {
-                    contents: JSON.stringify(quill.getContents()),
-                    color: document.body.style.backgroundColor,
-                }), 
+                {
+                    invoke("save_contents", {
+                        contents: JSON.stringify(quill.getContents()),
+                        color: document.body.style.backgroundColor,
+                    });
+                }, 
             2000)
         }
 
@@ -42,7 +53,6 @@
 
             if (editor!.clientHeight > windowSize.height) {
                 appWindow.setSize(
-                    // 25 to get rid of the scroll bar
                     new LogicalSize(
                         windowSize.width,
                         editor!.clientHeight,
@@ -52,22 +62,28 @@
         });
 
         new QuillMarkdown(quill, {});
-        
-        appWindow.listen("tauri://focus", () => quill.focus())
 
         requestAnimationFrame(() => quill.focus())
 
         appWindow.listen("fit_text", async () => {
-          let editor = document.querySelector(".ql-editor");
-          let maxWidth = 0;
+            let editor = document.querySelector(".ql-editor") as HTMLElement;
+            //   let maxWidth = 0;
 
-          for (let item of editor!.children) {
-            maxWidth = Math.max(maxWidth, item.clientWidth);
-          }
+            //   for (let item of editor!.children) {
+            //     maxWidth = Math.max(maxWidth, item.clientWidth);
+            //   }
 
-          appWindow.setSize(
-            new LogicalSize(maxWidth + 35, editor!.clientHeight)
-          );
+            editor.style.minHeight = "fit-content";
+            
+            const factor = await appWindow.scaleFactor();
+            const windowSize = (await appWindow.outerSize()).toLogical(factor);
+            
+            requestAnimationFrame(async () => {
+                appWindow.setSize(
+                    new LogicalSize(windowSize.width, editor!.clientHeight)
+                );
+                editor.style.minHeight = "100vh";
+            })
         });
 
         listen("save_request", () => 
@@ -76,19 +92,6 @@
                 color: document.body.style.backgroundColor,
             })
         )
-
-        // @ts-expect-error
-        let init = window.__STICKY_INIT__ as undefined | {contents: string, color: string}
-        if (init) {
-            quill.setContents(JSON.parse(init.contents));
-            document.body.style.backgroundColor = init.color;
-        } else {
-            document.body.style.backgroundColor = "#fff9b1";
-        }
-
-        document.addEventListener("click", () => {
-            quill.focus()
-        });
     });
 </script>
 
