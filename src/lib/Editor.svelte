@@ -11,8 +11,19 @@
 
     const appWindow = webviewWindow.getCurrentWebviewWindow();
 
+    let quill: undefined | Quill = $state()
+
+    export function save_contents() {
+        if (quill) {
+            invoke("save_contents", {
+                contents: JSON.stringify(quill.getContents()),
+                color: document.body.style.backgroundColor,
+            });
+        }
+    }
+
     onMount(async () => {
-        const quill = new Quill("#editor", {
+        quill = new Quill("#editor", {
             theme: "bubble",
             placeholder: "Empty Note",
             modules: {
@@ -32,14 +43,7 @@
         let timeout: undefined | number = $state()
         function debounceChangeEvent() {
             clearTimeout(timeout)
-            timeout = setTimeout(() => 
-                {
-                    invoke("save_contents", {
-                        contents: JSON.stringify(quill.getContents()),
-                        color: document.body.style.backgroundColor,
-                    });
-                }, 
-            2000)
+            timeout = setTimeout(save_contents, 2000)
         }
 
         quill.on("text-change", async () => {
@@ -63,15 +67,10 @@
 
         new QuillMarkdown(quill, {});
 
-        requestAnimationFrame(() => quill.focus())
+        requestAnimationFrame(() => quill?.focus())
 
         appWindow.listen("fit_text", async () => {
             let editor = document.querySelector(".ql-editor") as HTMLElement;
-            //   let maxWidth = 0;
-
-            //   for (let item of editor!.children) {
-            //     maxWidth = Math.max(maxWidth, item.clientWidth);
-            //   }
 
             editor.style.minHeight = "fit-content";
             
@@ -86,12 +85,7 @@
             })
         });
 
-        listen("save_request", () => 
-            invoke("save_contents", {
-                contents: JSON.stringify(quill.getContents()),
-                color: document.body.style.backgroundColor,
-            })
-        )
+        listen("save_request", save_contents)
     });
 </script>
 

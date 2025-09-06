@@ -15,6 +15,8 @@
   ];
   const appWindow = webviewWindow.getCurrentWebviewWindow();
 
+  let editor: Editor;
+
   let colorMenuOpen = $state(false);
   let titlebarHovered = $state(false);
 
@@ -30,6 +32,7 @@
     document.body.style.backgroundColor = (
       e.target as HTMLDivElement
     ).style.backgroundColor;
+    editor.save_contents();
     toggleColorMenu();
   }
 
@@ -74,7 +77,7 @@
   {/each}
 </div>
 
-<Editor />
+<Editor bind:this={editor} />
 
 <style>
   div {
