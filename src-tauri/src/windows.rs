@@ -183,7 +183,7 @@ pub fn snap_window(
     Ok(())
 }
 
-pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<(), anyhow::Error> {
+pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<WebviewWindow, anyhow::Error> {
     log::debug!("Creating new sticky window");
     let label = format!("sticky_{}", WINDOW_ID.fetch_add(1, Ordering::Relaxed));
 
@@ -195,8 +195,7 @@ pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<(), anyh
             .inner_size(300.0, 250.0);
 
     if let Some(note) = payload {
-        let init_script = format!(
-            r#"
+        let init_script = format!(r#"
             window.__STICKY_INIT__ = {}
         "#,
             serde_json::to_string(note)?
@@ -208,9 +207,7 @@ pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<(), anyh
             .position(note.x as f64, note.y as f64);
     }
 
-    builder.build().context("Could not create sticky window")?;
-
-    Ok(())
+    builder.build().context("Could not create sticky window")
 }
 
 pub fn close_sticky(app: &AppHandle) -> Result<(), anyhow::Error> {

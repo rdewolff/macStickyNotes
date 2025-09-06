@@ -178,7 +178,7 @@ pub fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
     match MenuCommand::try_from(event.id) {
         Ok(command) => {
             if let Err(e) = match command {
-                MenuCommand::NewNote => create_sticky(app, None),
+                MenuCommand::NewNote => create_sticky(app, None).map(|_| ()),
                 MenuCommand::Snap(direction) => snap_window(app, direction, false),
                 MenuCommand::PartialSnap(direction) => snap_window(app, direction, true),
                 MenuCommand::CloseNote => close_sticky(app),

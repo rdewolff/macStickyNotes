@@ -33,14 +33,21 @@ pub fn load_stickies(app: &AppHandle) -> Result<(), anyhow::Error> {
 
         log::info!("loading stickies: {:?}", notes_vec);
 
-        notes_vec.iter().for_each(|note| {
-            if let Err(e) = create_sticky(app, Some(note)) {
-                log::error!("Error creating window with payload: {:#}", e)
-            }
-        });
-    };
+        let mut updated_map = serde_json::Map::new();
 
-    // store.clear();
+        notes_vec.into_iter().for_each(|note| match create_sticky(app, Some(&note)) {
+            Ok(window) => {
+                updated_map.insert(window.label().to_string(), serde_json::to_value(note).unwrap());
+            },
+            Err(e) => log::error!("Error creating window with payload: {:#}", e)
+        });
+
+        store.set("data", updated_map);
+    } else {
+        store.clear();
+    }
+
+    store.save()?;
     Ok(())
 }
 
