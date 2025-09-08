@@ -207,7 +207,16 @@ pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<WebviewW
             .position(note.x as f64, note.y as f64);
     }
 
-    builder.build().context("Could not create sticky window")
+    let window = builder.build().context("Could not create sticky window")?;
+
+    let app_clone = app.clone();
+    window.on_window_event(move |event| {
+        if let tauri::WindowEvent::CloseRequested { .. } = event {
+            let _ = cycle_focus(&app_clone, false);
+        }
+    });
+
+    Ok(window)
 }
 
 pub fn close_sticky(app: &AppHandle) -> Result<(), anyhow::Error> {
