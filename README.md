@@ -22,7 +22,7 @@ This app is not tested on windows or linux, so there may be bugs, but I don't fo
 
 ### Macos
 
-I do not have an apple developer account, so the installer is not signed/notarized
+I do not have an apple developer account, so the installer is not signed/notarized.
 download the .dmg and run `xattr -d com.apple.quarantine /path/to/dmg.dmg` to allow it to be opened
 
 ## App Specific Keyboard shortcuts
@@ -37,6 +37,6 @@ Default editor shortcuts (Cmd+X, Cmd+V, Cmd+C) are enabled
 | `Cmd + /`                         | Focus next note                                                                                     |
 | `Cmd + Alt + /`                   | Focus previous note                                                                                 |
 | `Cmd + F`                         | Resize note to text                                                                                 |
-| `Cmd + Alt + <Arrow Key>`         | Snap Note (Move window in direction until it aligns with the nearest fully overlapping window edge) |
-| `Cmd + Shift + Alt + <Arrow Key>` | Partially Snap Note (Move window in direction until it aligns with the nearest window edge)         |
-
+| `Cmd + Alt + <Arrow Key>`         | Snap note (Move window in direction until it aligns with the nearest fully overlapping window edge) |
+| `Cmd + Shift + Alt + <Arrow Key>` | Partially snap note (Move window in direction until it aligns with the nearest window edge)         |
+| `Cmd + <Number>`                  | Set color of note                                                                                   |

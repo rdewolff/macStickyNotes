@@ -48,6 +48,10 @@
     appWindow.setAlwaysOnTop(false);
   })
 
+  appWindow.listen<number>("set_color", (event) => {
+    document.body.style.backgroundColor = colors[event.payload];
+  })
+
   onMount(async () => {
     // @ts-expect-error
     if (!window.__STICKY_INIT__) {

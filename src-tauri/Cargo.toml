@@ -1,6 +1,6 @@
 [package]
 name = "md-sticky"
-version = "1.0.6"
+version = "1.0.7"
 description = "Sticky notes app with markdown support"
 authors = ["Andrew Yurovchak"]
 edition = "2021"

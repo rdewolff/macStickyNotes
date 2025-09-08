@@ -5,7 +5,7 @@ use tauri::menu::{
 use tauri::{AppHandle, Emitter, Wry};
 use tauri_plugin_log::log;
 
-use crate::windows::{close_sticky, create_sticky, cycle_focus, fit_text, snap_window, Direction};
+use crate::windows::{close_sticky, create_sticky, cycle_focus, fit_text, set_color, snap_window, Direction};
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 enum MenuCommand {
@@ -14,6 +14,7 @@ enum MenuCommand {
     FitText,
     NextNote,
     PrevNote,
+    Color(u8),
     Snap(Direction),
     PartialSnap(Direction),
 }
@@ -46,7 +47,10 @@ fn create_window_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error>
                 Some("Cmd+W"),
             )?,
             &MenuItem::with_id(app, MenuCommand::NewNote, "New Note", true, Some("Cmd+N"))?,
-            &MenuItem::with_id(
+        ])
+        .separator()
+        .items(&[
+             &MenuItem::with_id(
                 app,
                 MenuCommand::NextNote,
                 "Focus Next Note",
@@ -145,15 +149,77 @@ fn create_edit_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error> {
         .items(&[
             &PredefinedMenuItem::undo(app, None)?,
             &PredefinedMenuItem::redo(app, None)?,
+        ])
+        .separator()
+        .items(&[
             &PredefinedMenuItem::cut(app, None)?,
             &PredefinedMenuItem::copy(app, None)?,
             &PredefinedMenuItem::paste(app, None)?,
-            &MenuItem::with_id(
+        ])
+        .separator()
+        .item(&MenuItem::with_id(
                 app,
                 MenuCommand::FitText,
                 "Resize Note to Text",
                 true,
                 Some("Cmd+F"),
+            )?,)
+        .build()?;
+
+    Ok(menu)
+}
+
+fn create_color_menu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error> {
+    let menu = SubmenuBuilder::new(app, "Color")
+        .items(&[
+            &MenuItem::with_id(
+                app,
+                MenuCommand::Color(0),
+                "Color 1",
+                true,
+                Some("Cmd+1"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                MenuCommand::Color(1),
+                "Color 2",
+                true,
+                Some("Cmd+2"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                MenuCommand::Color(2),
+                "Color 3",
+                true,
+                Some("Cmd+3"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                MenuCommand::Color(3),
+                "Color 4",
+                true,
+                Some("Cmd+4"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                MenuCommand::Color(4),
+                "Color 5",
+                true,
+                Some("Cmd+5"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                MenuCommand::Color(5),
+                "Color 6",
+                true,
+                Some("Cmd+6"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                MenuCommand::Color(6),
+                "Color 7",
+                true,
+                Some("Cmd+7"),
             )?,
         ])
         .build()?;
@@ -168,6 +234,7 @@ pub fn create_menu(app: &AppHandle) -> Result<Menu<Wry>, anyhow::Error> {
             &create_edit_submenu(app)?,
             &create_snap_submenu(app)?,
             &create_partial_snap_submenu(app)?,
+            &create_color_menu(app)?,
         ])
         .build()?;
 
@@ -185,7 +252,8 @@ pub fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
                 MenuCommand::NextNote => cycle_focus(app, false),
                 MenuCommand::PrevNote => cycle_focus(app, true),
                 MenuCommand::FitText => fit_text(app),
-                // _ => Err(anyhow!("unimplemented command: {:?}", command)),
+                MenuCommand::Color(index) => set_color(app, index), 
+                // _ => Err(anyhow::anyhow!("unimplemented command: {:?}", command)),
             } {
                 log::error!("Error executing command: {:?} : {:#}", command, e)
             }

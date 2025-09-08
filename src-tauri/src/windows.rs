@@ -249,8 +249,21 @@ pub fn fit_text(app: &AppHandle) -> Result<(), anyhow::Error> {
         .into_iter()
         .for_each(|(label, window)| {
             if window.is_focused().unwrap_or(false) {
-                log::info!("emitting to window {}", label);
+                log::info!("emitting fit_text to window {}", label);
                 let _ = window.emit_to(EventTarget::webview_window(label), "fit_text", {});
+            }
+        });
+
+    Ok(())
+}
+
+pub fn set_color(app: &AppHandle, index: u8) -> Result<(), anyhow::Error> {
+    app.webview_windows()
+        .into_iter()
+        .for_each(|(label, window)| {
+            if window.is_focused().unwrap_or(false) {
+                log::info!("emitting set color to window {}", label);
+                let _ = window.emit_to(EventTarget::webview_window(label), "set_color", index);
             }
         });
 
