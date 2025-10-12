@@ -255,13 +255,18 @@ pub fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
                 MenuCommand::Color(index) => set_color(app, index), 
                 // _ => Err(anyhow::anyhow!("unimplemented command: {:?}", command)),
             } {
-                log::error!("Error executing command: {:?} : {:#}", command, e)
-            }
+                log::error!("Error executing command: {:?} : {:#}", command, e);
+            };
+            if let 
+                MenuCommand::NewNote |
+                MenuCommand::CloseNote |
+                MenuCommand::Color(_) 
+            = command {
+                _ = app.emit("save_request", {});
+            };
         }
         Err(e) => {
             log::warn!("{:#}", e)
         }
     };
-
-    let _ = app.emit("save_request", {});
 }

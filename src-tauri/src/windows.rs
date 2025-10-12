@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use anyhow::{anyhow, Context};
 use tauri::{
-    AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize, WebviewWindow,
+    AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize, WebviewWindow, WindowEvent,
 };
 use tauri_plugin_log::log;
 
@@ -59,6 +59,12 @@ pub fn snap_window(
     let window = get_focused_window(app).context("No window currently focused")?;
     let (window_position, window_size) = get_position_and_size(&window)?;
 
+    let active_monitor = app
+        .cursor_position()
+        .and_then(|p| app.monitor_from_point(p.x, p.y))
+        .context("could not get cursor position")?
+        .context("could not get monitor from cursor position")?;
+
     let current_monitor = window
         .current_monitor()
         .context(format!(
@@ -66,6 +72,16 @@ pub fn snap_window(
             window.label()
         ))?
         .context("window to be positioned is hidden or otherwise has no display")?;
+
+    if current_monitor.name() != active_monitor.name() {
+        window.set_position(
+            (PhysicalPosition {
+                x: active_monitor.position().x + GAP,
+                y: active_monitor.position().y + GAP
+            }).to_logical::<i32>(active_monitor.scale_factor())
+        )?;
+        return Ok(())
+    }
 
     let other_windows = app
         .webview_windows()
@@ -153,7 +169,7 @@ pub fn snap_window(
             x: viable_edges
                 .filter(|edge| *edge < window_position.x as i32)
                 .max()
-                .unwrap_or(GAP),
+                .unwrap_or( current_monitor.position().x + GAP),
             y: window_position.y,
         },
         Direction::Up => PhysicalPosition {
@@ -161,13 +177,13 @@ pub fn snap_window(
             y: viable_edges
                 .filter(|edge| *edge < window_position.y as i32)
                 .max()
-                .unwrap_or(GAP),
+                .unwrap_or(current_monitor.position().y + GAP),
         },
         Direction::Right => PhysicalPosition {
             x: viable_edges
                 .filter(|edge| *edge > window_position.x as i32)
                 .min()
-                .unwrap_or((current_monitor.size().width - window_size.width) as i32 - GAP),
+                .unwrap_or(((current_monitor.position().x + current_monitor.size().width as i32) - window_size.width as i32) - GAP),
             y: window_position.y,
         },
         Direction::Down => PhysicalPosition {
@@ -175,7 +191,7 @@ pub fn snap_window(
             y: viable_edges
                 .filter(|edge| *edge > window_position.y as i32)
                 .min()
-                .unwrap_or((current_monitor.size().height - window_size.height) as i32 - GAP),
+                .unwrap_or(((current_monitor.position().y + current_monitor.size().height as i32) - window_size.height as i32) - GAP),
         },
     };
 
@@ -208,13 +224,30 @@ pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<WebviewW
     }
 
     let window = builder.build().context("Could not create sticky window")?;
-
     let app_clone = app.clone();
-    window.on_window_event(move |event| {
-        if let tauri::WindowEvent::CloseRequested { .. } = event {
+    let window_clone = window.clone();
+    window.on_window_event(move |event| match event {
+        WindowEvent::CloseRequested { .. } => {
             let _ = cycle_focus(&app_clone, false);
         }
+        WindowEvent::Moved(_) | WindowEvent::Resized(_) => {
+            _ = window_clone.emit("save_request", {});
+        }
+        _ => {}
     });
+
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::NSWindow;
+
+        let ns_window_ptr = window.ns_window().unwrap();
+        unsafe {
+            use objc2_app_kit::NSWindowCollectionBehavior;
+
+            let ns_window = &mut *(ns_window_ptr as *mut NSWindow);
+            ns_window.setCollectionBehavior(NSWindowCollectionBehavior::IgnoresCycle | NSWindowCollectionBehavior::Transient);
+        }
+    }
 
     Ok(window)
 }

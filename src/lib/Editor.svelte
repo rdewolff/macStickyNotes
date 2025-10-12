@@ -11,15 +11,21 @@
 
     const appWindow = webviewWindow.getCurrentWebviewWindow();
 
-    let quill: undefined | Quill = $state()
+    let quill: undefined | Quill = $state();
+    let saveTimeout: null | number = null;
 
     export function save_contents() {
-        if (quill) {
-            invoke("save_contents", {
-                contents: JSON.stringify(quill.getContents()),
-                color: document.body.style.backgroundColor,
-            });
+        if (saveTimeout) {
+            clearTimeout(saveTimeout)
         }
+        saveTimeout = setTimeout(() => {
+            if (quill) {
+                invoke("save_contents", {
+                    contents: JSON.stringify(quill.getContents()),
+                    color: document.body.style.backgroundColor,
+                });
+            }
+        }, 300);
     }
 
     onMount(async () => {
@@ -27,12 +33,14 @@
             theme: "bubble",
             placeholder: "Empty Note",
             modules: {
-                toolbar: false
-            }
+                toolbar: false,
+            },
         });
 
         // @ts-expect-error
-        let init = window.__STICKY_INIT__ as undefined | {contents: string, color: string}
+        let init = window.__STICKY_INIT__ as
+            | undefined
+            | { contents: string; color: string };
         if (init) {
             quill.setContents(JSON.parse(init.contents));
             document.body.style.backgroundColor = init.color;
@@ -40,14 +48,14 @@
             document.body.style.backgroundColor = "#fff9b1";
         }
 
-        let timeout: undefined | number = $state()
+        let timeout: undefined | number = $state();
         function debounceChangeEvent() {
-            clearTimeout(timeout)
-            timeout = setTimeout(save_contents, 2000)
+            clearTimeout(timeout);
+            timeout = setTimeout(save_contents, 2000);
         }
 
         quill.on("text-change", async () => {
-            debounceChangeEvent()
+            debounceChangeEvent();
 
             let editor = document.querySelector(".ql-editor");
 
@@ -57,35 +65,32 @@
 
             if (editor!.clientHeight > windowSize.height) {
                 appWindow.setSize(
-                    new LogicalSize(
-                        windowSize.width,
-                        editor!.clientHeight,
-                    ),
+                    new LogicalSize(windowSize.width, editor!.clientHeight),
                 );
             }
         });
 
         new QuillMarkdown(quill, {});
 
-        requestAnimationFrame(() => quill?.focus())
+        requestAnimationFrame(() => quill?.focus());
 
         appWindow.listen("fit_text", async () => {
             let editor = document.querySelector(".ql-editor") as HTMLElement;
 
             editor.style.minHeight = "fit-content";
-            
+
             const factor = await appWindow.scaleFactor();
             const windowSize = (await appWindow.outerSize()).toLogical(factor);
-            
+
             requestAnimationFrame(async () => {
                 appWindow.setSize(
-                    new LogicalSize(windowSize.width, editor!.clientHeight)
+                    new LogicalSize(windowSize.width, editor!.clientHeight),
                 );
                 editor.style.minHeight = "100vh";
-            })
+            });
         });
 
-        listen("save_request", save_contents)
+        listen("save_request", save_contents);
     });
 </script>
 

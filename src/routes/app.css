@@ -59,6 +59,7 @@ input:focus {
 
 .ql-editor {
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
 .focused::after {
