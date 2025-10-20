@@ -59,8 +59,11 @@ pub fn snap_window(
     let window = get_focused_window(app).context("No window currently focused")?;
     let (window_position, window_size) = get_position_and_size(&window)?;
 
+    let primary_monitor = app.primary_monitor().context("could not get primary monitor")?.context("no primary monitor")?;
+
     let active_monitor = app
         .cursor_position()
+        .map(|p| p.to_logical(primary_monitor.scale_factor()))
         .and_then(|p| app.monitor_from_point(p.x, p.y))
         .context("could not get cursor position")?
         .context("could not get monitor from cursor position")?;
