@@ -216,11 +216,16 @@ pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<WebviewW
         "#,
             serde_json::to_string(note)?
         );
-
+        
         builder = builder
             .initialization_script(init_script)
-            .inner_size(note.width as f64, note.height as f64)
-            .position(note.x as f64, note.y as f64);
+            .inner_size(note.width as f64, note.height as f64);
+
+        if app.monitor_from_point(note.x as f64, note.y as f64)?.is_some() {
+            builder = builder.position(note.x as f64, note.y as f64);
+        } else {
+            builder = builder.position(0., 0.);
+        }
     }
 
     let window = builder.build().context("Could not create sticky window")?;
@@ -310,4 +315,14 @@ pub fn set_color(app: &AppHandle, index: u8) -> Result<(), anyhow::Error> {
         });
 
     Ok(())
+}
+
+pub fn reset_note_positions(app: &AppHandle) -> anyhow::Result<()> {
+    app
+        .webview_windows()
+        .into_iter()
+        .map(|(_, window)| {
+            window.set_position(PhysicalPosition { x: 0, y: 0 }).context("could not set note position")
+        })
+        .collect::<Result<(), anyhow::Error>>()
 }

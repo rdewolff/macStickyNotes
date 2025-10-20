@@ -5,12 +5,13 @@ use tauri::menu::{
 use tauri::{AppHandle, Emitter, Wry};
 use tauri_plugin_log::log;
 
-use crate::windows::{close_sticky, create_sticky, cycle_focus, fit_text, set_color, snap_window, Direction};
+use crate::windows::{close_sticky, create_sticky, cycle_focus, fit_text, reset_note_positions, set_color, snap_window, Direction};
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 enum MenuCommand {
     NewNote,
     CloseNote,
+    ResetPositions,
     FitText,
     NextNote,
     PrevNote,
@@ -47,6 +48,7 @@ fn create_window_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error>
                 Some("Cmd+W"),
             )?,
             &MenuItem::with_id(app, MenuCommand::NewNote, "New Note", true, Some("Cmd+N"))?,
+            &MenuItem::with_id(app, MenuCommand::ResetPositions, "Reset Note Positions", true, None::<&str>)?
         ])
         .separator()
         .items(&[
@@ -246,6 +248,7 @@ pub fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
         Ok(command) => {
             if let Err(e) = match command {
                 MenuCommand::NewNote => create_sticky(app, None).map(|_| ()),
+                MenuCommand::ResetPositions => reset_note_positions(app),
                 MenuCommand::Snap(direction) => snap_window(app, direction, false),
                 MenuCommand::PartialSnap(direction) => snap_window(app, direction, true),
                 MenuCommand::CloseNote => close_sticky(app),
