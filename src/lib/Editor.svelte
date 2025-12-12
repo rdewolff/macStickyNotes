@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import Quill from "quill";
+    import Quill, { Delta } from "quill";
     // @ts-expect-error
     import QuillMarkdown from "quilljs-markdown";
     import "quill/dist/quill.bubble.css";
@@ -26,6 +26,10 @@
                 });
             }
         }, 300);
+    }
+
+    export function remove_selection() {
+        quill?.setSelection(null)
     }
 
     onMount(async () => {
@@ -68,6 +72,12 @@
                     new LogicalSize(windowSize.width, editor!.clientHeight),
                 );
             }
+        });
+
+        // make sure pasted content is always formatted as plaintext
+        quill.clipboard.matchers = []
+        quill.clipboard.addMatcher(Node.TEXT_NODE, (node, delta) => {
+            return new Delta().insert(node.textContent!);
         });
 
         new QuillMarkdown(quill, {});

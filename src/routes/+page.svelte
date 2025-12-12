@@ -45,6 +45,7 @@
   appWindow.listen("tauri://blur", () => {
     titlebarHovered = false
     document.body.classList.remove("focused")
+    editor.remove_selection()
     appWindow.setAlwaysOnTop(false);
   })
 
