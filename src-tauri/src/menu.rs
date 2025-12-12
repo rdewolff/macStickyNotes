@@ -1,14 +1,18 @@
-use anyhow::Context;
+use std::sync::Mutex;
+
+use anyhow::{Context, anyhow};
 use tauri::menu::{
-    Menu, MenuBuilder, MenuEvent, MenuId, MenuItem, PredefinedMenuItem, Submenu, SubmenuBuilder,
+    Menu, MenuBuilder, MenuEvent, MenuId, MenuItem, PredefinedMenuItem, Submenu, SubmenuBuilder
 };
-use tauri::{AppHandle, Emitter, Wry};
+use tauri::{AppHandle, Emitter, Manager, Wry};
 use tauri_plugin_log::log;
 
+use crate::save_load::save_settings;
+use crate::settings::MenuSettings;
 use crate::windows::{close_sticky, create_sticky, cycle_focus, fit_text, reset_note_positions, set_color, snap_window, Direction};
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
-enum MenuCommand {
+pub enum MenuCommand {
     NewNote,
     CloseNote,
     ResetPositions,
@@ -18,6 +22,7 @@ enum MenuCommand {
     Color(u8),
     Snap(Direction),
     PartialSnap(Direction),
+    BringToFront
 }
 
 impl Into<MenuId> for MenuCommand {
@@ -37,6 +42,9 @@ impl TryFrom<MenuId> for MenuCommand {
 }
 
 fn create_window_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error> {
+    let settings = app.state::<Mutex<MenuSettings>>();
+    let settings_guard = settings.lock().map_err(|_| anyhow!("Could not get lock on menu settings"))?;
+
     let menu = SubmenuBuilder::new(app, "About")
         .items(&[
             &PredefinedMenuItem::quit(app, None)?,
@@ -52,7 +60,7 @@ fn create_window_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error>
         ])
         .separator()
         .items(&[
-             &MenuItem::with_id(
+            &MenuItem::with_id(
                 app,
                 MenuCommand::NextNote,
                 "Focus Next Note",
@@ -66,6 +74,10 @@ fn create_window_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error>
                 true,
                 Some("Cmd+Alt+/"),
             )?,
+        ])
+        .separator()
+        .items(&[
+            &settings_guard.bring_to_front
         ])
         .build()?;
 
@@ -256,6 +268,7 @@ pub fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
                 MenuCommand::PrevNote => cycle_focus(app, true),
                 MenuCommand::FitText => fit_text(app),
                 MenuCommand::Color(index) => set_color(app, index), 
+                MenuCommand::BringToFront => save_settings(app),
                 // _ => Err(anyhow::anyhow!("unimplemented command: {:?}", command)),
             } {
                 log::error!("Error executing command: {:?} : {:#}", command, e);

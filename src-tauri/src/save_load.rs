@@ -1,12 +1,15 @@
-use anyhow::Context;
+use std::sync::Mutex;
+
+use anyhow::{Context, anyhow};
 use tauri_plugin_log::log;
 use tauri_plugin_store::StoreExt;
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
-use crate::windows::create_sticky;
+use crate::{settings::MenuSettings, windows::create_sticky};
 
-const SAVE_PATH: &str = "save_data";
+const NOTES_DATA: &str = "save_data";
+const SETTINGS: &str = "settings";
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct Note {
@@ -19,7 +22,7 @@ pub struct Note {
 }
 
 pub fn load_stickies(app: &AppHandle) -> Result<(), anyhow::Error> {
-    let store = app.store(SAVE_PATH)?;
+    let store = app.store(NOTES_DATA)?;
 
     if let Some(val) = store.get("data") {
         let map = val
@@ -55,7 +58,7 @@ pub fn load_stickies(app: &AppHandle) -> Result<(), anyhow::Error> {
 pub fn save_sticky(app: &AppHandle, label: &str, note: Option<Note>) -> Result<(), anyhow::Error> {
     log::info!("Saving sticky: {:?}", note);
 
-    let store = app.store(SAVE_PATH)?;
+    let store = app.store(NOTES_DATA)?;
 
     let mut value = store
         .get("data")
@@ -74,6 +77,28 @@ pub fn save_sticky(app: &AppHandle, label: &str, note: Option<Note>) -> Result<(
 
     store.set("data", value);
     store.save()?;
+
+    Ok(())
+}
+
+pub fn load_settings(app: &AppHandle) -> anyhow::Result<MenuSettings> {
+    log::info!("Loading settings");
+
+    let store = app.store(SETTINGS)?;
+
+    let bring_to_front = store.get("bring_to_front").and_then(|v| v.as_bool()).unwrap_or(true);
+
+    MenuSettings::new(app, bring_to_front)
+}
+
+pub fn save_settings(app: &AppHandle) -> anyhow::Result<()> {
+    log::info!("Saving settings");
+
+    let store = app.store(SETTINGS)?;
+    let state = app.state::<Mutex<MenuSettings>>();
+    let settings = state.lock().map_err(|_| anyhow!("could not get lock on menu settings"))?;
+
+    store.set("bring_to_front", settings.bring_to_front()?);
 
     Ok(())
 }
