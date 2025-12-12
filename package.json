@@ -13,6 +13,8 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@jamescoyle/svg-icon": "^1.0.0",
+    "@mdi/js": "^7.4.47",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-autostart": "^2.5.0",
     "@tauri-apps/plugin-log": "^2.7.0",

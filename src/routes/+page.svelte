@@ -3,6 +3,8 @@
   import { onMount } from "svelte";
   import { webviewWindow } from "@tauri-apps/api";
   import { invoke } from "@tauri-apps/api/core";
+  import { mdiClose, mdiPalette, mdiPin, mdiPinOff } from '@mdi/js';
+  import "@jamescoyle/svg-icon"
 
   const colors = [
     "#fff9b1",
@@ -19,6 +21,12 @@
 
   let colorMenuOpen = $state(false);
   let titlebarHovered = $state(false);
+  let alwaysontop = $state(false)
+
+  function toggleAlwaysOnTop() {
+    alwaysontop = !alwaysontop
+    invoke("set_note_always_on_top", {always_on_top: alwaysontop})
+  }
 
   function closeNote() {
     invoke("close_window")
@@ -45,7 +53,7 @@
   appWindow.listen("tauri://blur", () => {
     titlebarHovered = false
     document.body.classList.remove("focused")
-    editor.remove_selection()
+    editor?.remove_selection()
     appWindow.setAlwaysOnTop(false);
   })
 
@@ -53,23 +61,38 @@
     document.body.style.backgroundColor = colors[event.payload];
   })
 
+  let move_timer: number | undefined = undefined;
+  function save_debounce() {
+    clearTimeout(move_timer)
+    setTimeout(() => editor?.save_contents(), 100)
+  }
+
+  appWindow.listen("tauri://move", save_debounce)
+  appWindow.listen("tauri://resize", save_debounce)
+
   onMount(async () => {
     // @ts-expect-error
     if (!window.__STICKY_INIT__) {
       document.body.classList.add("focused") // window is focused on creation by default, except when initialized
+    } else {
+      //@ts-expect-error
+      alwaysontop = window.__STICKY_INIT__.always_on_top
     }
-
+    
     document.body.addEventListener("mouseenter", () => titlebarHovered = true);
     document.body.addEventListener("mouseleave", () => titlebarHovered = false);
   });
 </script>
 
 <div data-tauri-drag-region class:hover={titlebarHovered}>
-  <button class="titlebar-button" id="titlebar-close" onclick={closeNote}>
-    <img src="https://api.iconify.design/mdi:close.svg" alt="close" />
+  <button class="titlebar-button" id="titlebar-close" onclick={closeNote} aria-label="close note">
+    <svg-icon class="cross" type="mdi" path={mdiClose} size="15"></svg-icon>
   </button>
-  <button class="titlebar-button" id="titlebar-color" onclick={toggleColorMenu}>
-    <img src="https://api.iconify.design/mdi:color.svg" alt="color" />
+  <button class="titlebar-button" id="titlebar-close" onclick={toggleAlwaysOnTop} aria-label="pin/unpin note">
+    <svg-icon class="cross" type="mdi" path={alwaysontop ? mdiPinOff : mdiPin} size="10"></svg-icon>
+  </button>
+  <button class="titlebar-button" id="titlebar-color" onclick={toggleColorMenu} aria-label="select note color">
+     <svg-icon class="cross" type="mdi" path={mdiPalette} size="10"></svg-icon>
   </button>
   {#each colors as color}
     <button
@@ -111,10 +134,6 @@
     padding: 0;
     height: 20px;
     width: 20px;
-  }
-
-  img {
-    height: 10px;
-    padding: 5px;
+    background-color: transparent;
   }
 </style>

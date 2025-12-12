@@ -22,6 +22,7 @@ pub enum MenuCommand {
     PartialSnap(Direction),
     BringToFront,
     AutoStart,
+    // PinToTop,
 }
 
 impl Into<MenuId> for MenuCommand {

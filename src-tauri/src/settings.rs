@@ -22,7 +22,7 @@ impl MenuSettings {
             autostart: CheckMenuItem::with_id(
                 app, 
                 MenuCommand::AutoStart, 
-                "Automatically launch on startup", 
+                "launch app on startup", 
                 true, 
                 autostart, 
                 None::<String>

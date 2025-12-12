@@ -85,12 +85,14 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             bring_all_to_front,
             save_contents,
-            close_window
+            close_window,
+            set_note_always_on_top,
         ])
         .setup(setup)
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|_app, event| match event {
+            // prevent app from exiting when no windows are open
             tauri::RunEvent::ExitRequested { api, code, .. } => {
                 if code.is_none() {
                     api.prevent_exit();

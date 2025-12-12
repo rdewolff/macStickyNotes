@@ -2,16 +2,16 @@ use anyhow::Context;
 use tauri::{Manager};
 
 use crate::{
-    save_load::{Note, save_sticky}, settings::MenuSettings, windows::close_sticky
+    save_load::{Note, save_sticky}, settings::MenuSettings, windows::{close_sticky, set_always_on_top}
 };
 
 #[tauri::command]
-pub fn bring_all_to_front(window: tauri::Window, settings: tauri::State<MenuSettings>) -> Result<(), String> {
+pub fn bring_all_to_front(app: tauri::AppHandle, settings: tauri::State<MenuSettings>) -> Result<(), String> {
     if !settings.bring_to_front().map_err(|e| e.to_string())? {
         return Ok(())
     }
 
-    window.webview_windows().iter().for_each(|(_, w)| {
+    app.webview_windows().iter().for_each(|(_, w)| {
         #[cfg(target_os = "macos")]
         {
             use objc2_app_kit::NSWindow;
@@ -41,11 +41,11 @@ pub fn save_contents(
 
     let position = window
         .outer_position()
-        .context(format!(
-            "Could not get position of window: {}",
-            window.label()
-        ))
-        .map_err(|e| e.to_string())?
+        .map_err(|e| format!(
+            "Could not get position of window: {} : {}",
+            window.label(),
+            e
+        ))?
         .to_logical(scale_factor);
 
     let size = window
@@ -54,6 +54,14 @@ pub fn save_contents(
         .map_err(|e| e.to_string())?
         .to_logical(scale_factor);
 
+    let always_on_top = window
+        .is_always_on_top()
+        .map_err(|e| format!(
+            "Could not get window always_on_top status: {} : {}",
+            window.label(),
+            e
+        ))?;
+
     let note = Note {
         color,
         contents,
@@ -61,9 +69,15 @@ pub fn save_contents(
         y: position.y,
         height: size.height,
         width: size.width,
+        always_on_top
     };
 
     save_sticky(window.app_handle(), window.label(), Some(note)).map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn set_note_always_on_top(app: tauri::AppHandle, always_on_top: bool) -> Result<(), String> {
+    set_always_on_top(&app, always_on_top).map_err(|e| e.to_string())
 }
