@@ -211,6 +211,7 @@ pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<WebviewW
             .decorations(false)
             .resizable(true)
             .visible(true)
+            .accept_first_mouse(true)
             .inner_size(300.0, 250.0);
 
     if let Some(note) = payload {
@@ -222,7 +223,8 @@ pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<WebviewW
         
         builder = builder
             .initialization_script(init_script)
-            .inner_size(note.width as f64, note.height as f64);
+            .inner_size(note.width as f64, note.height as f64)
+            .always_on_top(note.always_on_top);
 
         if app.monitor_from_point(note.x as f64, note.y as f64)?.is_some() {
             builder = builder.position(note.x as f64, note.y as f64);
@@ -328,9 +330,7 @@ pub fn reset_note_positions(app: &AppHandle) -> anyhow::Result<()> {
 
 pub fn set_always_on_top(app: &AppHandle, always_on_top: bool) -> anyhow::Result<()> {
     if let Some(window) = get_focused_window(app) {
-        window.set_always_on_top(always_on_top)?;
-        save_sticky(app, window.label(), None)?;
-        Ok(())
+        window.set_always_on_top(always_on_top).context("Could not set window always on top")
     } else {
         bail!("No window currently focused!")
     }

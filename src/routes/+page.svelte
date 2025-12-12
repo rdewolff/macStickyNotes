@@ -21,11 +21,12 @@
 
   let colorMenuOpen = $state(false);
   let titlebarHovered = $state(false);
-  let alwaysontop = $state(false)
+  let alwaysOnTop = $state(false)
 
-  function toggleAlwaysOnTop() {
-    alwaysontop = !alwaysontop
-    invoke("set_note_always_on_top", {always_on_top: alwaysontop})
+  async function toggleAlwaysOnTop() {
+    alwaysOnTop = !alwaysOnTop
+    await invoke("set_note_always_on_top", {alwaysOnTop})
+    await editor.save_contents()
   }
 
   function closeNote() {
@@ -44,17 +45,15 @@
     toggleColorMenu();
   }
 
-  appWindow.listen("tauri://focus", (p) => {
-    invoke("bring_all_to_front")
+  appWindow.listen("tauri://focus", async (p) => {
+    await invoke("bring_all_to_front")
     document.body.classList.add("focused")
-    appWindow.setAlwaysOnTop(true);
   })
   
   appWindow.listen("tauri://blur", () => {
     titlebarHovered = false
     document.body.classList.remove("focused")
     editor?.remove_selection()
-    appWindow.setAlwaysOnTop(false);
   })
 
   appWindow.listen<number>("set_color", (event) => {
@@ -64,7 +63,7 @@
   let move_timer: number | undefined = undefined;
   function save_debounce() {
     clearTimeout(move_timer)
-    setTimeout(() => editor?.save_contents(), 100)
+    setTimeout(async () => await editor?.save_contents(), 100)
   }
 
   appWindow.listen("tauri://move", save_debounce)
@@ -76,7 +75,7 @@
       document.body.classList.add("focused") // window is focused on creation by default, except when initialized
     } else {
       //@ts-expect-error
-      alwaysontop = window.__STICKY_INIT__.always_on_top
+      alwaysOnTop = window.__STICKY_INIT__.always_on_top
     }
     
     document.body.addEventListener("mouseenter", () => titlebarHovered = true);
@@ -89,7 +88,7 @@
     <svg-icon class="cross" type="mdi" path={mdiClose} size="15"></svg-icon>
   </button>
   <button class="titlebar-button" id="titlebar-close" onclick={toggleAlwaysOnTop} aria-label="pin/unpin note">
-    <svg-icon class="cross" type="mdi" path={alwaysontop ? mdiPinOff : mdiPin} size="10"></svg-icon>
+    <svg-icon class="cross" type="mdi" path={alwaysOnTop ? mdiPinOff : mdiPin} size="10"></svg-icon>
   </button>
   <button class="titlebar-button" id="titlebar-color" onclick={toggleColorMenu} aria-label="select note color">
      <svg-icon class="cross" type="mdi" path={mdiPalette} size="10"></svg-icon>

@@ -106,7 +106,7 @@ pub fn load_stickies(app: &AppHandle) -> Result<(), anyhow::Error> {
             .map(|v| serde_json::from_value::<Note>(v.clone()))
             .collect::<Result<_, _>>()?;
 
-        log::info!("loading stickies: {:?}", notes_vec);
+        log::info!("loading stickies: {:#?}", notes_vec);
 
         let mut updated_map = serde_json::Map::new();
 

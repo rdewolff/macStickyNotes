@@ -14,13 +14,13 @@
     let quill: undefined | Quill = $state();
     let saveTimeout: null | number = null;
 
-    export function save_contents() {
+    export async function save_contents() {
         if (saveTimeout) {
             clearTimeout(saveTimeout)
         }
-        saveTimeout = setTimeout(() => {
+        saveTimeout = setTimeout(async () => {
             if (quill) {
-                invoke("save_contents", {
+                await invoke("save_contents", {
                     contents: JSON.stringify(quill.getContents()),
                     color: document.body.style.backgroundColor,
                 });
