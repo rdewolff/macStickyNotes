@@ -1,14 +1,12 @@
 use anyhow::Context;
 use tauri::{Manager};
-use std::sync::Mutex;
 
 use crate::{
     save_load::{Note, save_sticky}, settings::MenuSettings, windows::close_sticky
 };
 
 #[tauri::command]
-pub fn bring_all_to_front(window: tauri::Window, state: tauri::State<Mutex<MenuSettings>>) -> Result<(), String> {
-    let settings = state.lock().map_err(|_| "Could not get lock on menu settings")?;
+pub fn bring_all_to_front(window: tauri::Window, settings: tauri::State<MenuSettings>) -> Result<(), String> {
     if !settings.bring_to_front().map_err(|e| e.to_string())? {
         return Ok(())
     }

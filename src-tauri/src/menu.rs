@@ -1,6 +1,4 @@
-use std::sync::Mutex;
-
-use anyhow::{Context, anyhow};
+use anyhow::{Context};
 use tauri::menu::{
     Menu, MenuBuilder, MenuEvent, MenuId, MenuItem, PredefinedMenuItem, Submenu, SubmenuBuilder
 };
@@ -22,7 +20,8 @@ pub enum MenuCommand {
     Color(u8),
     Snap(Direction),
     PartialSnap(Direction),
-    BringToFront
+    BringToFront,
+    AutoStart,
 }
 
 impl Into<MenuId> for MenuCommand {
@@ -42,8 +41,7 @@ impl TryFrom<MenuId> for MenuCommand {
 }
 
 fn create_window_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error> {
-    let settings = app.state::<Mutex<MenuSettings>>();
-    let settings_guard = settings.lock().map_err(|_| anyhow!("Could not get lock on menu settings"))?;
+    let settings = app.state::<MenuSettings>();
 
     let menu = SubmenuBuilder::new(app, "About")
         .items(&[
@@ -77,7 +75,8 @@ fn create_window_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error>
         ])
         .separator()
         .items(&[
-            &settings_guard.bring_to_front
+            &settings.bring_to_front,
+            &settings.autostart,
         ])
         .build()?;
 
@@ -269,6 +268,7 @@ pub fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
                 MenuCommand::FitText => fit_text(app),
                 MenuCommand::Color(index) => set_color(app, index), 
                 MenuCommand::BringToFront => save_settings(app),
+                MenuCommand::AutoStart => save_settings(app),
                 // _ => Err(anyhow::anyhow!("unimplemented command: {:?}", command)),
             } {
                 log::error!("Error executing command: {:?} : {:#}", command, e);

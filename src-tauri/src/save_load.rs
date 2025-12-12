@@ -1,6 +1,4 @@
-use std::sync::Mutex;
-
-use anyhow::{Context, anyhow};
+use anyhow::{Context};
 use tauri_plugin_log::log;
 use tauri_plugin_store::StoreExt;
 
@@ -87,16 +85,16 @@ pub fn load_settings(app: &AppHandle) -> anyhow::Result<MenuSettings> {
     let store = app.store(SETTINGS)?;
 
     let bring_to_front = store.get("bring_to_front").and_then(|v| v.as_bool()).unwrap_or(true);
+    let autostart = store.get("autostart").and_then(|v| v.as_bool()).unwrap_or(true);
 
-    MenuSettings::new(app, bring_to_front)
+    MenuSettings::new(app, bring_to_front, autostart)
 }
 
 pub fn save_settings(app: &AppHandle) -> anyhow::Result<()> {
     log::info!("Saving settings");
 
     let store = app.store(SETTINGS)?;
-    let state = app.state::<Mutex<MenuSettings>>();
-    let settings = state.lock().map_err(|_| anyhow!("could not get lock on menu settings"))?;
+    let settings = app.state::<MenuSettings>();
 
     store.set("bring_to_front", settings.bring_to_front()?);
 
