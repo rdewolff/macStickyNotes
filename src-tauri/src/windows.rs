@@ -268,7 +268,7 @@ pub fn close_sticky(app: &AppHandle) -> Result<(), anyhow::Error> {
     }
 }
 
-pub fn cycle_focus(app: &AppHandle, reverse: bool) -> Result<(), anyhow::Error> {
+pub fn sorted_windows(app: &AppHandle) -> Vec<WebviewWindow> {
     let mut positions: Vec<_> = app
         .webview_windows()
         .into_iter()
@@ -276,20 +276,24 @@ pub fn cycle_focus(app: &AppHandle, reverse: bool) -> Result<(), anyhow::Error> 
         .collect();
 
     positions.sort_by_key(|(p, _)| *p);
+
+    positions.into_iter().map(|(_, w)| w).collect()
+}
+
+pub fn cycle_focus(app: &AppHandle, reverse: bool) -> Result<(), anyhow::Error> {
+    let mut sorted_windows = sorted_windows(app);
     if reverse {
-        positions.reverse();
+        sorted_windows.reverse();
     }
 
-    let focused_index = positions
+    let focused_index = sorted_windows
         .iter()
-        .position(|(_, window)| window.is_focused().unwrap_or(false))
+        .position(|w| w.is_focused().unwrap_or(false))
         .context("No window currently focused")?;
 
-    let next_window_index = (focused_index + 1) % positions.len();
+    let next_window_index = (focused_index + 1) % sorted_windows.len();
 
-    positions[next_window_index].1.set_focus()?;
-
-    Ok(())
+    sorted_windows[next_window_index].set_focus().context("Could not focus window")
 }
 
 pub fn fit_text(app: &AppHandle) -> Result<(), anyhow::Error> {

@@ -1,17 +1,19 @@
+use std::iter::once;
+
 use anyhow::Context;
 use tauri::{Manager};
 
 use crate::{
-    save_load::{Note, save_sticky}, settings::MenuSettings, windows::{close_sticky, set_always_on_top}
+    save_load::{Note, save_sticky}, settings::MenuSettings, windows::{close_sticky, set_always_on_top, sorted_windows}
 };
 
 #[tauri::command]
-pub fn bring_all_to_front(app: tauri::AppHandle, settings: tauri::State<MenuSettings>) -> Result<(), String> {
+pub fn bring_all_to_front(app: tauri::AppHandle, window: tauri::WebviewWindow, settings: tauri::State<MenuSettings>) -> Result<(), String> {
     if !settings.bring_to_front().map_err(|e| e.to_string())? {
         return Ok(())
     }
 
-    app.webview_windows().iter().for_each(|(_, w)| {
+    sorted_windows(&app).into_iter().chain(once(window)).for_each(|w| {
         #[cfg(target_os = "macos")]
         {
             use objc2_app_kit::NSWindow;

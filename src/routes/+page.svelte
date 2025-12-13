@@ -47,6 +47,7 @@
 
   appWindow.listen("tauri://focus", async (p) => {
     await invoke("bring_all_to_front")
+    titlebarHovered = true
     document.body.classList.add("focused")
   })
   
@@ -77,9 +78,6 @@
       //@ts-expect-error
       alwaysOnTop = window.__STICKY_INIT__.always_on_top
     }
-    
-    document.body.addEventListener("mouseenter", () => titlebarHovered = true);
-    document.body.addEventListener("mouseleave", () => titlebarHovered = false);
   });
 </script>
 

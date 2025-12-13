@@ -74,11 +74,8 @@
             }
         });
 
-        // make sure pasted content is always formatted as plaintext
-        quill.clipboard.matchers = []
-        quill.clipboard.addMatcher(Node.TEXT_NODE, (node, delta) => {
-            return new Delta().insert(node.textContent!);
-        });
+        // remove color and background color formatting
+        quill.clipboard.matchers.splice(5, 1)
 
         new QuillMarkdown(quill, {});
 

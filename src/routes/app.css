@@ -61,15 +61,3 @@ input:focus {
     min-height: 100vh;
     overflow-x: hidden;
 }
-
-.focused::after {
-    background-color: white;
-    mix-blend-mode: difference;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100vw;
-    height: 5px;
-    content: "";
-    z-index: 2;
-}
