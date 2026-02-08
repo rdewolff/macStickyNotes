@@ -4,6 +4,7 @@ use anyhow::Context;
 use tauri::{Manager};
 
 use crate::{
+    anchor,
     save_load::{Note, save_sticky}, settings::MenuSettings, windows::{close_sticky, set_always_on_top, sorted_windows}
 };
 
@@ -82,4 +83,14 @@ pub fn save_contents(
 #[tauri::command]
 pub fn set_note_always_on_top(app: tauri::AppHandle, always_on_top: bool) -> Result<(), String> {
     set_always_on_top(&app, always_on_top).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn anchor_to_nearest(app: tauri::AppHandle, window: tauri::WebviewWindow) -> Result<String, String> {
+    anchor::anchor_to_nearest(&app, &window).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn unanchor(app: tauri::AppHandle, window: tauri::WebviewWindow) -> Result<(), String> {
+    anchor::unanchor(&app, &window).map_err(|e| e.to_string())
 }

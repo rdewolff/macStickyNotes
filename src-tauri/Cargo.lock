@@ -2204,6 +2204,8 @@ version = "1.0.13"
 dependencies = [
  "anyhow",
  "chrono",
+ "core-foundation",
+ "core-graphics",
  "objc2 0.6.2",
  "objc2-app-kit",
  "serde",

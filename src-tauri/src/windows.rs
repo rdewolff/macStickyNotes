@@ -209,6 +209,7 @@ pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<WebviewW
     let mut builder =
         tauri::WebviewWindowBuilder::new(app, label, tauri::WebviewUrl::App("index.html".into()))
             .decorations(false)
+            .transparent(true)
             .resizable(true)
             .visible(true)
             .accept_first_mouse(true)
@@ -252,6 +253,7 @@ pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<WebviewW
 
             let ns_window = &mut *(ns_window_ptr as *mut NSWindow);
             ns_window.setCollectionBehavior(NSWindowCollectionBehavior::IgnoresCycle | NSWindowCollectionBehavior::Transient);
+            ns_window.setHasShadow(true);
         }
     }
 

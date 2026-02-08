@@ -7,6 +7,7 @@ use crate::commands::*;
 use crate::menu::{create_menu, handle_menu_event};
 use crate::save_load::{load_settings, load_stickies};
 
+mod anchor;
 mod commands;
 mod menu;
 mod save_load;
@@ -39,6 +40,7 @@ fn setup(app: &mut App) -> Result<(), Box<(dyn std::error::Error)>> {
     log::info!("registered for autostart? {}", autostart_manager.is_enabled()?);
 
     app.manage(menu_settings);
+    app.manage(anchor::AnchorState::default());
 
     let menu = create_menu(app.handle())?;
     app.set_menu(menu)?;
@@ -87,6 +89,8 @@ pub fn run() {
             save_contents,
             close_window,
             set_note_always_on_top,
+            anchor_to_nearest,
+            unanchor,
         ])
         .setup(setup)
         .build(tauri::generate_context!())

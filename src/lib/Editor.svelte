@@ -14,6 +14,11 @@
     let quill: undefined | Quill = $state();
     let saveTimeout: null | number = null;
 
+    function getNoteColor(): string {
+        const container = document.getElementById("note-container");
+        return container?.style.backgroundColor || "#fff9b1";
+    }
+
     export async function save_contents() {
         if (saveTimeout) {
             clearTimeout(saveTimeout)
@@ -22,7 +27,7 @@
             if (quill) {
                 await invoke("save_contents", {
                     contents: JSON.stringify(quill.getContents()),
-                    color: document.body.style.backgroundColor,
+                    color: getNoteColor(),
                 });
             }
         }, 300);
@@ -45,11 +50,12 @@
         let init = window.__STICKY_INIT__ as
             | undefined
             | { contents: string; color: string };
+        const noteContainer = document.getElementById("note-container");
         if (init) {
             quill.setContents(JSON.parse(init.contents));
-            document.body.style.backgroundColor = init.color;
+            if (noteContainer) noteContainer.style.backgroundColor = init.color;
         } else {
-            document.body.style.backgroundColor = "#fff9b1";
+            if (noteContainer) noteContainer.style.backgroundColor = "#fff9b1";
         }
 
         let timeout: undefined | number = $state();

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    md_sticky_lib::run()
+    mac_sticky_notes_lib::run()
 }

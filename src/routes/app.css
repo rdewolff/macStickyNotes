@@ -4,8 +4,57 @@
 
 body {
   margin: 0;
+  padding: 4px;
   display: flex;
   flex-direction: column;
+  background-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.note-container {
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  min-height: 100vh;
+  background-color: #fff9b1;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.note-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.04) 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 12px;
+}
+
+.note-container::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(
+    225deg,
+    rgba(0, 0, 0, 0.08) 0%,
+    rgba(0, 0, 0, 0.03) 50%,
+    transparent 50%
+  );
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 0 0 12px 0;
 }
 
 input {
