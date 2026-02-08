@@ -1,5 +1,9 @@
 # macStickyNotes
 
+<p align="center">
+  <img src="icon.jpg" alt="macStickyNotes icon" width="200" />
+</p>
+
 A lightweight sticky notes app for macOS with markdown support, window anchoring, and smart snapping.
 
 > Forked from [md-sticky](https://github.com/andrewyur/md-sticky) by [Andrew Yurovchak](https://github.com/andrewyur). Built on top of his original work with additional features like window anchoring, note pinning, automatic backups, and more.
