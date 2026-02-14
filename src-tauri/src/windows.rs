@@ -2,7 +2,8 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use anyhow::{bail, Context};
 use tauri::{
-    AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize, WebviewWindow, WindowEvent,
+    AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize, WebviewWindow,
+    WindowEvent,
 };
 use tauri_plugin_log::log;
 
@@ -332,6 +333,16 @@ pub fn reset_note_positions(app: &AppHandle) -> anyhow::Result<()> {
             window.set_position(PhysicalPosition { x: 0, y: 0 }).context("could not set note position")
         })
         .collect::<Result<(), anyhow::Error>>()
+}
+
+pub fn emit_to_focused(app: &AppHandle, event: &str, payload: &str) -> anyhow::Result<()> {
+    let window = get_focused_window(app).context("No window currently focused")?;
+    window.emit_to(
+        EventTarget::webview_window(window.label().to_string()),
+        event,
+        payload.to_string(),
+    )?;
+    Ok(())
 }
 
 pub fn set_always_on_top(app: &AppHandle, always_on_top: bool) -> anyhow::Result<()> {

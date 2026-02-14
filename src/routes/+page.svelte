@@ -87,6 +87,21 @@
     anchorTarget = "";
   })
 
+  appWindow.listen<string>("zoom", (event) => {
+    const container = document.getElementById("note-container");
+    if (!container) return;
+    let current = parseFloat(container.style.zoom || "1");
+    if (event.payload === "in") {
+      current = Math.min(current + 0.1, 2.0);
+    } else if (event.payload === "out") {
+      current = Math.max(current - 0.1, 0.5);
+    } else if (event.payload === "reset") {
+      current = 1.0;
+    }
+    container.style.zoom = String(current);
+    editor?.save_contents();
+  })
+
   let move_timer: number | undefined = undefined;
   function save_debounce() {
     clearTimeout(move_timer)
@@ -103,6 +118,12 @@
     } else {
       //@ts-expect-error
       alwaysOnTop = window.__STICKY_INIT__.always_on_top
+      //@ts-expect-error
+      const initZoom = window.__STICKY_INIT__.zoom
+      if (initZoom && initZoom !== 1.0) {
+        const container = document.getElementById("note-container");
+        if (container) container.style.zoom = String(initZoom);
+      }
     }
   });
 </script>
@@ -146,9 +167,9 @@
     justify-content: flex-start;
     flex-direction: row-reverse;
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 4px;
+    left: 4px;
+    right: 4px;
     z-index: 3;
     opacity: 0;
     transition: opacity 0.2s ease, background-color 0.2s ease;

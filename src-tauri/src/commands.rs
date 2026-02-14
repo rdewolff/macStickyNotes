@@ -39,6 +39,7 @@ pub fn save_contents(
     window: tauri::WebviewWindow,
     color: String,
     contents: String,
+    zoom: Option<f64>,
 ) -> Result<(), String> {
     let scale_factor = window.scale_factor().map_err(|e| e.to_string())?;
 
@@ -72,7 +73,8 @@ pub fn save_contents(
         y: position.y,
         height: size.height,
         width: size.width,
-        always_on_top
+        always_on_top,
+        zoom: zoom.unwrap_or(1.0),
     };
 
     save_sticky(window.app_handle(), window.label(), Some(note)).map_err(|e| e.to_string())?;

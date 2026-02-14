@@ -29,6 +29,12 @@ pub struct Note {
     pub width: u32,
     #[serde(default)] // bool default is false
     pub always_on_top: bool,
+    #[serde(default = "default_zoom")]
+    pub zoom: f64,
+}
+
+fn default_zoom() -> f64 {
+    1.0
 }
 
 pub fn create_backup(app: &AppHandle) -> anyhow::Result<()> {

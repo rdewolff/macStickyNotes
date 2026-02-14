@@ -7,7 +7,7 @@ use tauri_plugin_log::log;
 
 use crate::save_load::save_settings;
 use crate::settings::MenuSettings;
-use crate::windows::{close_sticky, create_sticky, cycle_focus, fit_text, reset_note_positions, set_color, snap_window, Direction};
+use crate::windows::{close_sticky, create_sticky, cycle_focus, emit_to_focused, fit_text, reset_note_positions, set_color, snap_window, Direction};
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 pub enum MenuCommand {
@@ -22,6 +22,9 @@ pub enum MenuCommand {
     PartialSnap(Direction),
     BringToFront,
     AutoStart,
+    ZoomIn,
+    ZoomOut,
+    ZoomReset,
 }
 
 impl Into<MenuId> for MenuCommand {
@@ -168,6 +171,7 @@ fn create_edit_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error> {
             &PredefinedMenuItem::cut(app, None)?,
             &PredefinedMenuItem::copy(app, None)?,
             &PredefinedMenuItem::paste(app, None)?,
+            &PredefinedMenuItem::select_all(app, None)?,
         ])
         .separator()
         .item(&MenuItem::with_id(
@@ -177,6 +181,12 @@ fn create_edit_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error> {
                 true,
                 Some("Cmd+F"),
             )?,)
+        .separator()
+        .items(&[
+            &MenuItem::with_id(app, MenuCommand::ZoomIn, "Zoom In", true, Some("Cmd+="))?,
+            &MenuItem::with_id(app, MenuCommand::ZoomOut, "Zoom Out", true, Some("Cmd+-"))?,
+            &MenuItem::with_id(app, MenuCommand::ZoomReset, "Reset Zoom", true, Some("Cmd+0"))?,
+        ])
         .build()?;
 
     Ok(menu)
@@ -267,6 +277,9 @@ pub fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
                 MenuCommand::PrevNote => cycle_focus(app, true),
                 MenuCommand::FitText => fit_text(app),
                 MenuCommand::Color(index) => set_color(app, index), 
+                MenuCommand::ZoomIn => emit_to_focused(app, "zoom", "in"),
+                MenuCommand::ZoomOut => emit_to_focused(app, "zoom", "out"),
+                MenuCommand::ZoomReset => emit_to_focused(app, "zoom", "reset"),
                 MenuCommand::BringToFront => save_settings(app),
                 MenuCommand::AutoStart => save_settings(app),
                 // _ => Err(anyhow::anyhow!("unimplemented command: {:?}", command)),

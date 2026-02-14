@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import Quill, { Delta } from "quill";
+    import Quill from "quill";
     // @ts-expect-error
     import QuillMarkdown from "quilljs-markdown";
     import "quill/dist/quill.bubble.css";
@@ -10,6 +10,7 @@
     import { invoke } from "@tauri-apps/api/core";
 
     const appWindow = webviewWindow.getCurrentWebviewWindow();
+    const RESIZE_THRESHOLD_PX = 2;
 
     let quill: undefined | Quill = $state();
     let saveTimeout: null | number = null;
@@ -17,6 +18,12 @@
     function getNoteColor(): string {
         const container = document.getElementById("note-container");
         return container?.style.backgroundColor || "#fff9b1";
+    }
+
+    function getZoomLevel(): number {
+        const container = document.getElementById("note-container");
+        const zoom = container?.style.zoom;
+        return zoom ? parseFloat(zoom) : 1.0;
     }
 
     export async function save_contents() {
@@ -28,6 +35,7 @@
                 await invoke("save_contents", {
                     contents: JSON.stringify(quill.getContents()),
                     color: getNoteColor(),
+                    zoom: getZoomLevel(),
                 });
             }
         }, 300);
@@ -37,6 +45,20 @@
         quill?.setSelection(null)
     }
 
+    async function growWindowToFitEditorContent(editor: HTMLElement) {
+        const overflowHeight = Math.ceil(editor.scrollHeight - editor.clientHeight);
+        if (overflowHeight <= RESIZE_THRESHOLD_PX) {
+            return;
+        }
+
+        const factor = await appWindow.scaleFactor();
+        const windowSize = (await appWindow.innerSize()).toLogical(factor);
+
+        await appWindow.setSize(
+            new LogicalSize(windowSize.width, windowSize.height + overflowHeight),
+        );
+    }
+
     onMount(async () => {
         quill = new Quill("#editor", {
             theme: "bubble",
@@ -44,6 +66,16 @@
             modules: {
                 toolbar: false,
             },
+        });
+
+        quill.keyboard.addBinding({ key: "a", shortKey: true }, () => {
+            if (!quill) {
+                return false;
+            }
+
+            const contentLength = Math.max(quill.getLength() - 1, 0);
+            quill.setSelection(0, contentLength, "user");
+            return false;
         });
 
         // @ts-expect-error
@@ -67,16 +99,9 @@
         quill.on("text-change", async () => {
             debounceChangeEvent();
 
-            let editor = document.querySelector(".ql-editor");
-
-            const factor = await appWindow.scaleFactor();
-
-            const windowSize = (await appWindow.innerSize()).toLogical(factor);
-
-            if (editor!.clientHeight > windowSize.height) {
-                appWindow.setSize(
-                    new LogicalSize(windowSize.width, editor!.clientHeight),
-                );
+            const editor = document.querySelector(".ql-editor");
+            if (editor instanceof HTMLElement) {
+                await growWindowToFitEditorContent(editor);
             }
         });
 
@@ -99,7 +124,7 @@
                 appWindow.setSize(
                     new LogicalSize(windowSize.width, editor!.clientHeight),
                 );
-                editor.style.minHeight = "100vh";
+                editor.style.minHeight = "calc(100vh - 8px)";
             });
         });
 

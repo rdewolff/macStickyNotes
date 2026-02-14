@@ -2,6 +2,13 @@
     overscroll-behavior: none;
 }
 
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   padding: 4px;
@@ -16,7 +23,7 @@ body {
   border-radius: 12px;
   overflow: hidden;
   position: relative;
-  min-height: 100vh;
+  min-height: calc(100vh - 8px);
   background-color: #fff9b1;
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.12),
@@ -89,6 +96,9 @@ input:focus {
         "Open Sans",
         "Helvetica Neue",
         sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    height: 100%;
 }
 
 .ql-editor li[data-list="checked"] > .ql-ui:before,
@@ -101,12 +111,87 @@ input:focus {
     margin-left: -1.75em;
 }
 
-.ql-editor * {
-    width: fit-content;
-    min-width: 10px;
+.ql-editor {
+    box-sizing: border-box;
+    min-height: calc(100vh - 8px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 28px 12px 12px 12px;
+    color: rgba(0, 0, 0, 0.82);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
-.ql-editor {
-    min-height: 100vh;
-    overflow-x: hidden;
+.ql-editor::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+.ql-container .ql-editor h1 {
+    font-size: 1.5em !important;
+    line-height: 1.22;
+    font-weight: 600;
+    margin: 0.52em 0 0.28em;
+}
+
+.ql-container .ql-editor h2 {
+    font-size: 1.28em !important;
+    line-height: 1.28;
+    font-weight: 600;
+    margin: 0.46em 0 0.24em;
+}
+
+.ql-container .ql-editor h3 {
+    font-size: 1.14em !important;
+    line-height: 1.32;
+    font-weight: 600;
+    margin: 0.4em 0 0.2em;
+}
+
+.ql-container .ql-editor p {
+    margin: 0.28em 0;
+}
+
+.ql-container .ql-editor ol,
+.ql-container .ql-editor ul {
+    padding-left: 1.35em;
+    margin: 0.24em 0;
+}
+
+.ql-container .ql-editor li {
+    margin: 0.16em 0;
+}
+
+.ql-container .ql-editor blockquote {
+    border-left: 3px solid rgba(0, 0, 0, 0.24);
+    margin: 0.44em 0;
+    padding-left: 0.72em;
+    color: rgba(0, 0, 0, 0.68);
+}
+
+.ql-container .ql-editor code:not(.ql-syntax) {
+    background: rgba(0, 0, 0, 0.07);
+    border-radius: 4px;
+    padding: 0.08em 0.32em;
+    font-size: 0.92em;
+}
+
+.ql-container .ql-editor pre.ql-syntax {
+    margin: 0.44em 0;
+    padding: 0.56em 0.72em;
+    border-radius: 6px;
+    font-size: 0.9em;
+}
+
+.ql-container .ql-editor a {
+    color: #1f5c89;
+    text-decoration: underline;
+    text-underline-offset: 1px;
+}
+
+.ql-container .ql-editor hr {
+    border: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.2);
+    margin: 0.64em 0;
 }
