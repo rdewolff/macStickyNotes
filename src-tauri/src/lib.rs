@@ -91,6 +91,12 @@ pub fn run() {
             set_note_always_on_top,
             anchor_to_nearest,
             unanchor,
+            open_note_manager_window,
+            list_saved_notes,
+            restore_note,
+            archive_note,
+            delete_note,
+            open_notes_folder,
         ])
         .setup(setup)
         .build(tauri::generate_context!())

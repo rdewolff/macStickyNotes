@@ -9,7 +9,7 @@ use core_graphics::display::{
     kCGNullWindowID, kCGWindowListExcludeDesktopElements, kCGWindowListOptionOnScreenOnly,
     CGWindowListCopyWindowInfo,
 };
-use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
+use tauri::{AppHandle, Emitter, EventTarget, Manager, WebviewWindow};
 use tauri_plugin_log::log;
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -235,8 +235,33 @@ pub fn unanchor(app: &AppHandle, window: &WebviewWindow) -> Result<(), anyhow::E
     let label = window.label().to_string();
     let state = app.state::<AnchorState>();
     state.anchors.lock().unwrap().remove(&label);
+    let _ = app.emit_to(EventTarget::webview_window(label.clone()), "anchor_lost", ());
 
     log::info!("Unanchored {}", label);
+    Ok(())
+}
+
+pub fn is_anchored(app: &AppHandle, window: &WebviewWindow) -> bool {
+    let state = app.state::<AnchorState>();
+    state
+        .anchors
+        .lock()
+        .map(|anchors| anchors.contains_key(window.label()))
+        .unwrap_or(false)
+}
+
+pub fn toggle_anchor_to_nearest(app: &AppHandle, window: &WebviewWindow) -> Result<(), anyhow::Error> {
+    if is_anchored(app, window) {
+        unanchor(app, window)?;
+    } else {
+        let target_name = anchor_to_nearest(app, window)?;
+        let _ = app.emit_to(
+            EventTarget::webview_window(window.label().to_string()),
+            "anchor_set",
+            target_name,
+        );
+    }
+
     Ok(())
 }
 

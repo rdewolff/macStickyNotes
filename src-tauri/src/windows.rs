@@ -1,31 +1,39 @@
-use std::sync::atomic::{AtomicU32, Ordering};
-
 use anyhow::{bail, Context};
 use tauri::{
-    AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize, WebviewWindow,
-    WindowEvent,
+    AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize, WebviewUrl,
+    WebviewWindow, WindowEvent,
 };
 use tauri_plugin_log::log;
 
-use crate::save_load::{save_sticky, Note};
+use crate::save_load::{
+    generate_note_id, make_default_record, mark_note_closed, save_sticky, NoteRecord,
+};
 
 const GAP: i32 = 20;
+const STICKY_WINDOW_PREFIX: &str = "sticky_";
+pub const MANAGER_WINDOW_LABEL: &str = "manager";
 
-static WINDOW_ID: AtomicU32 = AtomicU32::new(0);
+pub fn is_sticky_window_label(label: &str) -> bool {
+    label.starts_with(STICKY_WINDOW_PREFIX)
+}
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Copy)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
+pub fn note_id_from_label(label: &str) -> Option<String> {
+    label
+        .strip_prefix(STICKY_WINDOW_PREFIX)
+        .map(str::to_string)
+        .filter(|id| !id.is_empty())
+}
+
+fn sticky_label(note_id: &str) -> String {
+    format!("{STICKY_WINDOW_PREFIX}{note_id}")
 }
 
 fn get_focused_window(app: &AppHandle) -> Option<WebviewWindow> {
     app.webview_windows()
         .into_iter()
+        .filter(|(label, _)| is_sticky_window_label(label))
         .find(|(_, window)| window.is_focused().unwrap_or(false))
-        .map(|(_label, window)| window)
+        .map(|(_, window)| window)
 }
 
 fn get_position_and_size(
@@ -60,7 +68,10 @@ pub fn snap_window(
     let window = get_focused_window(app).context("No window currently focused")?;
     let (window_position, window_size) = get_position_and_size(&window)?;
 
-    let primary_monitor = app.primary_monitor().context("could not get primary monitor")?.context("no primary monitor")?;
+    let primary_monitor = app
+        .primary_monitor()
+        .context("could not get primary monitor")?
+        .context("no primary monitor")?;
 
     let active_monitor = app
         .cursor_position()
@@ -81,121 +92,129 @@ pub fn snap_window(
         window.set_position(
             (PhysicalPosition {
                 x: active_monitor.position().x + GAP,
-                y: active_monitor.position().y + GAP
-            }).to_logical::<i32>(active_monitor.scale_factor())
+                y: active_monitor.position().y + GAP,
+            })
+            .to_logical::<i32>(active_monitor.scale_factor()),
         )?;
-        return Ok(())
+        return Ok(());
     }
 
     let other_windows = app
         .webview_windows()
         .into_iter()
-        .filter(|(_, wind)| *wind != window)
+        .filter(|(label, wind)| is_sticky_window_label(label) && *wind != window)
         .filter_map(|(_, wind)| get_position_and_size(&wind).ok());
 
-    let viable_edges: Box<dyn Iterator<Item = i32>> =
-        if partial {
-            match direction {
-                Direction::Left => Box::new(other_windows.flat_map(|(position, size)| {
-                    [position.x + size.width as i32 + GAP, position.x]
-                })),
-                Direction::Up => Box::new(other_windows.flat_map(|(position, size)| {
-                    [position.y + size.height as i32 + GAP, position.y]
-                })),
-                Direction::Right => Box::new(other_windows.flat_map(|(position, size)| {
-                    [
-                        (position.x + size.width as i32) - window_size.width as i32,
-                        position.x - (window_size.width as i32 + GAP),
-                    ]
-                })),
-                Direction::Down => Box::new(other_windows.flat_map(|(position, size)| {
-                    [
-                        (position.y + size.height as i32) - window_size.height as i32,
-                        position.y - (window_size.height as i32 + GAP),
-                    ]
-                })),
-            }
-        } else {
-            match direction {
-                Direction::Left => Box::new(other_windows.filter_map(|(position, size)| {
-                    if window_overlap(
-                        position.y,
-                        size.height as i32,
-                        window_position.y,
-                        window_size.height as i32,
-                    ) {
-                        Some(position.x + size.width as i32 + GAP)
-                    } else {
-                        None
-                    }
-                })),
-                Direction::Up => Box::new(other_windows.filter_map(|(position, size)| {
-                    if window_overlap(
-                        position.x,
-                        size.width as i32,
-                        window_position.x,
-                        window_size.width as i32,
-                    ) {
-                        Some(position.y + size.height as i32 + GAP)
-                    } else {
-                        None
-                    }
-                })),
-                Direction::Right => Box::new(other_windows.filter_map(|(position, size)| {
-                    if window_overlap(
-                        position.y,
-                        size.height as i32,
-                        window_position.y,
-                        window_size.height as i32,
-                    ) {
-                        Some(position.x - (window_size.width as i32 + GAP))
-                    } else {
-                        None
-                    }
-                })),
-                Direction::Down => Box::new(other_windows.filter_map(|(position, size)| {
-                    if window_overlap(
-                        position.x,
-                        size.width as i32,
-                        window_position.x,
-                        window_size.width as i32,
-                    ) {
-                        Some(position.y - (window_size.height as i32 + GAP))
-                    } else {
-                        None
-                    }
-                })),
-            }
-        };
+    let viable_edges: Box<dyn Iterator<Item = i32>> = if partial {
+        match direction {
+            Direction::Left => Box::new(
+                other_windows.flat_map(|(position, size)| [position.x + size.width as i32 + GAP, position.x]),
+            ),
+            Direction::Up => Box::new(
+                other_windows.flat_map(|(position, size)| [position.y + size.height as i32 + GAP, position.y]),
+            ),
+            Direction::Right => Box::new(other_windows.flat_map(|(position, size)| {
+                [
+                    (position.x + size.width as i32) - window_size.width as i32,
+                    position.x - (window_size.width as i32 + GAP),
+                ]
+            })),
+            Direction::Down => Box::new(other_windows.flat_map(|(position, size)| {
+                [
+                    (position.y + size.height as i32) - window_size.height as i32,
+                    position.y - (window_size.height as i32 + GAP),
+                ]
+            })),
+        }
+    } else {
+        match direction {
+            Direction::Left => Box::new(other_windows.filter_map(|(position, size)| {
+                if window_overlap(
+                    position.y,
+                    size.height as i32,
+                    window_position.y,
+                    window_size.height as i32,
+                ) {
+                    Some(position.x + size.width as i32 + GAP)
+                } else {
+                    None
+                }
+            })),
+            Direction::Up => Box::new(other_windows.filter_map(|(position, size)| {
+                if window_overlap(
+                    position.x,
+                    size.width as i32,
+                    window_position.x,
+                    window_size.width as i32,
+                ) {
+                    Some(position.y + size.height as i32 + GAP)
+                } else {
+                    None
+                }
+            })),
+            Direction::Right => Box::new(other_windows.filter_map(|(position, size)| {
+                if window_overlap(
+                    position.y,
+                    size.height as i32,
+                    window_position.y,
+                    window_size.height as i32,
+                ) {
+                    Some(position.x - (window_size.width as i32 + GAP))
+                } else {
+                    None
+                }
+            })),
+            Direction::Down => Box::new(other_windows.filter_map(|(position, size)| {
+                if window_overlap(
+                    position.x,
+                    size.width as i32,
+                    window_position.x,
+                    window_size.width as i32,
+                ) {
+                    Some(position.y - (window_size.height as i32 + GAP))
+                } else {
+                    None
+                }
+            })),
+        }
+    };
 
     let position = match direction {
         Direction::Left => PhysicalPosition {
             x: viable_edges
-                .filter(|edge| *edge < window_position.x as i32)
+                .filter(|edge| *edge < window_position.x)
                 .max()
-                .unwrap_or( current_monitor.position().x + GAP),
+                .unwrap_or(current_monitor.position().x + GAP),
             y: window_position.y,
         },
         Direction::Up => PhysicalPosition {
             x: window_position.x,
             y: viable_edges
-                .filter(|edge| *edge < window_position.y as i32)
+                .filter(|edge| *edge < window_position.y)
                 .max()
                 .unwrap_or(current_monitor.position().y + GAP),
         },
         Direction::Right => PhysicalPosition {
             x: viable_edges
-                .filter(|edge| *edge > window_position.x as i32)
+                .filter(|edge| *edge > window_position.x)
                 .min()
-                .unwrap_or(((current_monitor.position().x + current_monitor.size().width as i32) - window_size.width as i32) - GAP),
+                .unwrap_or(
+                    ((current_monitor.position().x + current_monitor.size().width as i32)
+                        - window_size.width as i32)
+                        - GAP,
+                ),
             y: window_position.y,
         },
         Direction::Down => PhysicalPosition {
             x: window_position.x,
             y: viable_edges
-                .filter(|edge| *edge > window_position.y as i32)
+                .filter(|edge| *edge > window_position.y)
                 .min()
-                .unwrap_or(((current_monitor.position().y + current_monitor.size().height as i32) - window_size.height as i32) - GAP),
+                .unwrap_or(
+                    ((current_monitor.position().y + current_monitor.size().height as i32)
+                        - window_size.height as i32)
+                        - GAP,
+                ),
         },
     };
 
@@ -203,45 +222,61 @@ pub fn snap_window(
     Ok(())
 }
 
-pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<WebviewWindow, anyhow::Error> {
+pub fn create_sticky(
+    app: &AppHandle,
+    payload: Option<&NoteRecord>,
+) -> Result<WebviewWindow, anyhow::Error> {
     log::debug!("Creating new sticky window");
-    let label = format!("sticky_{}", WINDOW_ID.fetch_add(1, Ordering::Relaxed));
+
+    let record = if let Some(record) = payload {
+        record.clone()
+    } else {
+        let note_id = generate_note_id();
+        let record = make_default_record(note_id);
+        save_sticky(app, &record.id, record.note.clone())?;
+        record
+    };
+
+    let label = sticky_label(&record.id);
+
+    if let Some(existing) = app.get_webview_window(&label) {
+        existing.set_focus().ok();
+        return Ok(existing);
+    }
+
+    let init_script = format!(
+        r#"
+            window.__STICKY_INIT__ = {};
+        "#,
+        serde_json::to_string(&record)?
+    );
 
     let mut builder =
-        tauri::WebviewWindowBuilder::new(app, label, tauri::WebviewUrl::App("index.html".into()))
+        tauri::WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
             .decorations(false)
             .transparent(true)
             .resizable(true)
             .visible(true)
             .accept_first_mouse(true)
-            .inner_size(300.0, 250.0);
-
-    if let Some(note) = payload {
-        let init_script = format!(r#"
-            window.__STICKY_INIT__ = {}
-        "#,
-            serde_json::to_string(note)?
-        );
-        
-        builder = builder
             .initialization_script(init_script)
-            .inner_size(note.width as f64, note.height as f64)
-            .always_on_top(note.always_on_top);
+            .inner_size(record.note.width as f64, record.note.height as f64)
+            .always_on_top(record.note.always_on_top);
 
-        if app.monitor_from_point(note.x as f64, note.y as f64)?.is_some() {
-            builder = builder.position(note.x as f64, note.y as f64);
-        } else {
-            builder = builder.position(0., 0.);
-        }
+    if app
+        .monitor_from_point(record.note.x as f64, record.note.y as f64)?
+        .is_some()
+    {
+        builder = builder.position(record.note.x as f64, record.note.y as f64);
+    } else {
+        builder = builder.position(0., 0.);
     }
 
     let window = builder.build().context("Could not create sticky window")?;
     let app_clone = app.clone();
-    window.on_window_event(move |event| match event {
-        WindowEvent::CloseRequested { .. } => {
+    window.on_window_event(move |event| {
+        if let WindowEvent::CloseRequested { .. } = event {
             let _ = cycle_focus(&app_clone, false);
         }
-        _ => {}
     });
 
     #[cfg(target_os = "macos")]
@@ -253,7 +288,9 @@ pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<WebviewW
             use objc2_app_kit::NSWindowCollectionBehavior;
 
             let ns_window = &mut *(ns_window_ptr as *mut NSWindow);
-            ns_window.setCollectionBehavior(NSWindowCollectionBehavior::IgnoresCycle | NSWindowCollectionBehavior::Transient);
+            ns_window.setCollectionBehavior(
+                NSWindowCollectionBehavior::IgnoresCycle | NSWindowCollectionBehavior::Transient,
+            );
             ns_window.setHasShadow(true);
         }
     }
@@ -261,20 +298,57 @@ pub fn create_sticky(app: &AppHandle, payload: Option<&Note>) -> Result<WebviewW
     Ok(window)
 }
 
+pub fn open_note_manager(app: &AppHandle) -> Result<(), anyhow::Error> {
+    if let Some(window) = app.get_webview_window(MANAGER_WINDOW_LABEL) {
+        let _ = window.unminimize();
+        let _ = window.show();
+        window.set_focus()?;
+        return Ok(());
+    }
+
+    tauri::WebviewWindowBuilder::new(
+        app,
+        MANAGER_WINDOW_LABEL,
+        WebviewUrl::App("index.html".into()),
+    )
+    .title("Notes Manager")
+    .decorations(true)
+    .transparent(false)
+    .resizable(true)
+    .visible(true)
+    .inner_size(760.0, 560.0)
+    .min_inner_size(620.0, 420.0)
+    .initialization_script("window.__STICKY_MANAGER__ = true;")
+    .build()
+    .context("Could not create note manager window")?;
+
+    Ok(())
+}
+
 pub fn close_sticky(app: &AppHandle) -> Result<(), anyhow::Error> {
     if let Some(window) = get_focused_window(app) {
+        let note_id = note_id_from_label(window.label()).context("Missing note id for window")?;
         window.close()?;
-        save_sticky(app, window.label(), None)?;
+        mark_note_closed(app, &note_id)?;
         Ok(())
     } else {
         bail!("No window currently focused!")
     }
 }
 
+pub fn close_sticky_by_note_id(app: &AppHandle, note_id: &str) -> Result<(), anyhow::Error> {
+    let label = sticky_label(note_id);
+    if let Some(window) = app.get_webview_window(&label) {
+        window.close()?;
+    }
+    Ok(())
+}
+
 pub fn sorted_windows(app: &AppHandle) -> Vec<WebviewWindow> {
     let mut positions: Vec<_> = app
         .webview_windows()
         .into_iter()
+        .filter(|(label, _)| is_sticky_window_label(label))
         .filter_map(|(_label, w)| get_position_and_size(&w).ok().map(|(p, _)| (p, w)))
         .collect();
 
@@ -296,41 +370,41 @@ pub fn cycle_focus(app: &AppHandle, reverse: bool) -> Result<(), anyhow::Error> 
 
     let next_window_index = (focused_index + 1) % sorted_windows.len();
 
-    sorted_windows[next_window_index].set_focus().context("Could not focus window")
+    sorted_windows[next_window_index]
+        .set_focus()
+        .context("Could not focus window")
 }
 
 pub fn fit_text(app: &AppHandle) -> Result<(), anyhow::Error> {
-    app.webview_windows()
-        .into_iter()
-        .for_each(|(label, window)| {
-            if window.is_focused().unwrap_or(false) {
-                log::info!("emitting fit_text to window {}", label);
-                let _ = window.emit_to(EventTarget::webview_window(label), "fit_text", {});
-            }
-        });
+    app.webview_windows().into_iter().for_each(|(label, window)| {
+        if is_sticky_window_label(&label) && window.is_focused().unwrap_or(false) {
+            log::info!("emitting fit_text to window {}", label);
+            let _ = window.emit_to(EventTarget::webview_window(label), "fit_text", {});
+        }
+    });
 
     Ok(())
 }
 
 pub fn set_color(app: &AppHandle, index: u8) -> Result<(), anyhow::Error> {
-    app.webview_windows()
-        .into_iter()
-        .for_each(|(label, window)| {
-            if window.is_focused().unwrap_or(false) {
-                log::info!("emitting set color to window {}", label);
-                let _ = window.emit_to(EventTarget::webview_window(label), "set_color", index);
-            }
-        });
+    app.webview_windows().into_iter().for_each(|(label, window)| {
+        if is_sticky_window_label(&label) && window.is_focused().unwrap_or(false) {
+            log::info!("emitting set color to window {}", label);
+            let _ = window.emit_to(EventTarget::webview_window(label), "set_color", index);
+        }
+    });
 
     Ok(())
 }
 
 pub fn reset_note_positions(app: &AppHandle) -> anyhow::Result<()> {
-    app
-        .webview_windows()
+    app.webview_windows()
         .into_iter()
+        .filter(|(label, _)| is_sticky_window_label(label))
         .map(|(_, window)| {
-            window.set_position(PhysicalPosition { x: 0, y: 0 }).context("could not set note position")
+            window
+                .set_position(PhysicalPosition { x: 0, y: 0 })
+                .context("could not set note position")
         })
         .collect::<Result<(), anyhow::Error>>()
 }
@@ -347,8 +421,18 @@ pub fn emit_to_focused(app: &AppHandle, event: &str, payload: &str) -> anyhow::R
 
 pub fn set_always_on_top(app: &AppHandle, always_on_top: bool) -> anyhow::Result<()> {
     if let Some(window) = get_focused_window(app) {
-        window.set_always_on_top(always_on_top).context("Could not set window always on top")
+        window
+            .set_always_on_top(always_on_top)
+            .context("Could not set window always on top")
     } else {
         bail!("No window currently focused!")
     }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Copy)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
 }
