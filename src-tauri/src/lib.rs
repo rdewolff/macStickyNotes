@@ -1,7 +1,9 @@
-use tauri::{App, Manager};
+use std::time::Duration;
+
+use tauri::{App, Emitter, Manager};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_log::log::{self, LevelFilter};
 use tauri_plugin_updater::UpdaterExt;
-use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 use crate::commands::*;
 use crate::menu::{create_menu, handle_menu_event};
@@ -11,23 +13,22 @@ mod anchor;
 mod commands;
 mod menu;
 mod save_load;
-mod windows;
 mod settings;
+mod windows;
 
-fn setup(app: &mut App) -> Result<(), Box<(dyn std::error::Error)>> {
+fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     load_stickies(app.handle())?;
 
     let menu_settings = load_settings(app.handle())?;
 
     let autostart_manager = app.autolaunch();
     if !cfg!(debug_assertions) {
-
         let handle = app.handle().clone();
         tauri::async_runtime::spawn(async move {
             update(handle).await.unwrap();
         });
 
-        if !autostart_manager.is_enabled()?{
+        if !autostart_manager.is_enabled()? {
             if menu_settings.autostart()? {
                 autostart_manager.enable()?;
             } else {
@@ -37,7 +38,10 @@ fn setup(app: &mut App) -> Result<(), Box<(dyn std::error::Error)>> {
     } else {
         autostart_manager.disable()?;
     }
-    log::info!("registered for autostart? {}", autostart_manager.is_enabled()?);
+    log::info!(
+        "registered for autostart? {}",
+        autostart_manager.is_enabled()?
+    );
 
     app.manage(menu_settings);
     app.manage(anchor::AnchorState::default());
@@ -68,14 +72,19 @@ async fn update(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
         log::info!("update installed");
         app.restart();
     }
-    
+
     Ok(())
 }
 
 pub fn run() {
+    let mut allow_exit_after_flush = false;
+
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
-        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(
@@ -101,13 +110,28 @@ pub fn run() {
         .setup(setup)
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
-        .run(|_app, event| match event {
+        .run(move |app, event| match event {
             // prevent app from exiting when no windows are open
             tauri::RunEvent::ExitRequested { api, code, .. } => {
+                if allow_exit_after_flush {
+                    return;
+                }
+
                 if code.is_none() {
                     api.prevent_exit();
                 } else {
                     log::info!("exit code: {:?}", code);
+                    api.prevent_exit();
+
+                    allow_exit_after_flush = true;
+                    let app_handle = app.clone();
+                    let exit_code = code.unwrap_or_default();
+
+                    let _ = app_handle.emit("save_request", ());
+                    tauri::async_runtime::spawn_blocking(move || {
+                        std::thread::sleep(Duration::from_millis(220));
+                        app_handle.exit(exit_code);
+                    });
                 }
             }
             _ => {}

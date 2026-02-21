@@ -18,6 +18,14 @@
     color: string;
   };
 
+  type DeltaOp = {
+    insert?: string | Record<string, unknown>;
+  };
+
+  type QuillDelta = {
+    ops?: DeltaOp[];
+  };
+
   let quill: undefined | Quill = $state();
   let saveTimeout: null | number = null;
   let noteId = $state("");
@@ -33,6 +41,64 @@
     return zoom ? parseFloat(zoom) : 1.0;
   }
 
+  function parseDelta(contents: string): QuillDelta | null {
+    try {
+      return JSON.parse(contents) as QuillDelta;
+    } catch {
+      return null;
+    }
+  }
+
+  function isMeaningfulSerializedContents(contents: string): boolean {
+    const trimmed = contents.trim();
+    if (trimmed.length === 0) {
+      return false;
+    }
+
+    const delta = parseDelta(contents);
+    if (!delta || !Array.isArray(delta.ops)) {
+      return true;
+    }
+
+    if (delta.ops.length === 0) {
+      return false;
+    }
+
+    for (const op of delta.ops) {
+      const insert = op?.insert;
+      if (typeof insert === "string") {
+        if (insert.replace(/\n/g, "").trim().length > 0) {
+          return true;
+        }
+        continue;
+      }
+
+      if (insert && typeof insert === "object") {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function serializeContents(): string {
+    if (!quill) {
+      return "";
+    }
+
+    const delta = quill.getContents() as QuillDelta;
+    const hasEmbed =
+      delta.ops?.some(
+        (op) => op.insert !== null && typeof op.insert === "object",
+      ) ?? false;
+
+    if (!hasEmbed && quill.getText().trim().length === 0) {
+      return "";
+    }
+
+    return JSON.stringify(delta);
+  }
+
   async function persistContents() {
     if (!quill || !noteId) {
       return;
@@ -40,7 +106,7 @@
 
     await invoke("save_contents", {
       noteId,
-      contents: JSON.stringify(quill.getContents()),
+      contents: serializeContents(),
       color: getNoteColor(),
       zoom: getZoomLevel(),
     });
@@ -59,6 +125,7 @@
 
     saveTimeout = setTimeout(() => {
       void persistContents();
+      saveTimeout = null;
     }, 300);
   }
 
@@ -107,10 +174,11 @@
       noteId = init.id;
     }
 
-    if (init?.contents) {
-      try {
-        quill.setContents(JSON.parse(init.contents));
-      } catch {
+    if (init?.contents && isMeaningfulSerializedContents(init.contents)) {
+      const delta = parseDelta(init.contents);
+      if (delta) {
+        quill.setContents(delta as any);
+      } else {
         quill.setText(init.contents);
       }
     }
@@ -119,14 +187,8 @@
       noteContainer.style.backgroundColor = init?.color || "#fff9b1";
     }
 
-    let timeout: undefined | number = $state();
-    function debounceChangeEvent() {
-      clearTimeout(timeout);
-      timeout = setTimeout(save_contents, 2000);
-    }
-
     quill.on("text-change", async () => {
-      debounceChangeEvent();
+      void save_contents();
 
       const editor = document.querySelector(".ql-editor");
       if (editor instanceof HTMLElement) {
@@ -156,7 +218,19 @@
     });
 
     listen("save_request", () => {
-      void save_contents();
+      void save_contents(true);
+    });
+
+    const flushOnExit = () => {
+      void save_contents(true);
+    };
+
+    window.addEventListener("beforeunload", flushOnExit);
+    window.addEventListener("pagehide", flushOnExit);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        void save_contents(true);
+      }
     });
   });
 </script>

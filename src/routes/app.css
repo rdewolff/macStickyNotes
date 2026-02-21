@@ -103,12 +103,16 @@ input:focus {
 
 .ql-editor li[data-list="checked"] > .ql-ui:before,
 .ql-editor li[data-list="unchecked"] > .ql-ui:before {
-    font-family: Helvetica, Arial, sans-serif !important;
-    transform: scale(1.5);
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 1.08em;
+    line-height: 1;
     position: relative;
-    top: -1.5px;
+    top: 0;
     color: #000;
-    margin-left: -1.75em;
+    margin-left: -1.5em;
+    margin-right: 0.3em;
+    text-align: center;
+    width: 1.2em;
 }
 
 .ql-editor {

@@ -105,79 +105,80 @@ pub fn snap_window(
         .filter(|(label, wind)| is_sticky_window_label(label) && *wind != window)
         .filter_map(|(_, wind)| get_position_and_size(&wind).ok());
 
-    let viable_edges: Box<dyn Iterator<Item = i32>> = if partial {
-        match direction {
-            Direction::Left => Box::new(
-                other_windows.flat_map(|(position, size)| [position.x + size.width as i32 + GAP, position.x]),
-            ),
-            Direction::Up => Box::new(
-                other_windows.flat_map(|(position, size)| [position.y + size.height as i32 + GAP, position.y]),
-            ),
-            Direction::Right => Box::new(other_windows.flat_map(|(position, size)| {
-                [
-                    (position.x + size.width as i32) - window_size.width as i32,
-                    position.x - (window_size.width as i32 + GAP),
-                ]
-            })),
-            Direction::Down => Box::new(other_windows.flat_map(|(position, size)| {
-                [
-                    (position.y + size.height as i32) - window_size.height as i32,
-                    position.y - (window_size.height as i32 + GAP),
-                ]
-            })),
-        }
-    } else {
-        match direction {
-            Direction::Left => Box::new(other_windows.filter_map(|(position, size)| {
-                if window_overlap(
-                    position.y,
-                    size.height as i32,
-                    window_position.y,
-                    window_size.height as i32,
-                ) {
-                    Some(position.x + size.width as i32 + GAP)
-                } else {
-                    None
-                }
-            })),
-            Direction::Up => Box::new(other_windows.filter_map(|(position, size)| {
-                if window_overlap(
-                    position.x,
-                    size.width as i32,
-                    window_position.x,
-                    window_size.width as i32,
-                ) {
-                    Some(position.y + size.height as i32 + GAP)
-                } else {
-                    None
-                }
-            })),
-            Direction::Right => Box::new(other_windows.filter_map(|(position, size)| {
-                if window_overlap(
-                    position.y,
-                    size.height as i32,
-                    window_position.y,
-                    window_size.height as i32,
-                ) {
-                    Some(position.x - (window_size.width as i32 + GAP))
-                } else {
-                    None
-                }
-            })),
-            Direction::Down => Box::new(other_windows.filter_map(|(position, size)| {
-                if window_overlap(
-                    position.x,
-                    size.width as i32,
-                    window_position.x,
-                    window_size.width as i32,
-                ) {
-                    Some(position.y - (window_size.height as i32 + GAP))
-                } else {
-                    None
-                }
-            })),
-        }
-    };
+    let viable_edges: Box<dyn Iterator<Item = i32>> =
+        if partial {
+            match direction {
+                Direction::Left => Box::new(other_windows.flat_map(|(position, size)| {
+                    [position.x + size.width as i32 + GAP, position.x]
+                })),
+                Direction::Up => Box::new(other_windows.flat_map(|(position, size)| {
+                    [position.y + size.height as i32 + GAP, position.y]
+                })),
+                Direction::Right => Box::new(other_windows.flat_map(|(position, size)| {
+                    [
+                        (position.x + size.width as i32) - window_size.width as i32,
+                        position.x - (window_size.width as i32 + GAP),
+                    ]
+                })),
+                Direction::Down => Box::new(other_windows.flat_map(|(position, size)| {
+                    [
+                        (position.y + size.height as i32) - window_size.height as i32,
+                        position.y - (window_size.height as i32 + GAP),
+                    ]
+                })),
+            }
+        } else {
+            match direction {
+                Direction::Left => Box::new(other_windows.filter_map(|(position, size)| {
+                    if window_overlap(
+                        position.y,
+                        size.height as i32,
+                        window_position.y,
+                        window_size.height as i32,
+                    ) {
+                        Some(position.x + size.width as i32 + GAP)
+                    } else {
+                        None
+                    }
+                })),
+                Direction::Up => Box::new(other_windows.filter_map(|(position, size)| {
+                    if window_overlap(
+                        position.x,
+                        size.width as i32,
+                        window_position.x,
+                        window_size.width as i32,
+                    ) {
+                        Some(position.y + size.height as i32 + GAP)
+                    } else {
+                        None
+                    }
+                })),
+                Direction::Right => Box::new(other_windows.filter_map(|(position, size)| {
+                    if window_overlap(
+                        position.y,
+                        size.height as i32,
+                        window_position.y,
+                        window_size.height as i32,
+                    ) {
+                        Some(position.x - (window_size.width as i32 + GAP))
+                    } else {
+                        None
+                    }
+                })),
+                Direction::Down => Box::new(other_windows.filter_map(|(position, size)| {
+                    if window_overlap(
+                        position.x,
+                        size.width as i32,
+                        window_position.x,
+                        window_size.width as i32,
+                    ) {
+                        Some(position.y - (window_size.height as i32 + GAP))
+                    } else {
+                        None
+                    }
+                })),
+            }
+        };
 
     let position = match direction {
         Direction::Left => PhysicalPosition {
@@ -262,14 +263,7 @@ pub fn create_sticky(
             .inner_size(record.note.width as f64, record.note.height as f64)
             .always_on_top(record.note.always_on_top);
 
-    if app
-        .monitor_from_point(record.note.x as f64, record.note.y as f64)?
-        .is_some()
-    {
-        builder = builder.position(record.note.x as f64, record.note.y as f64);
-    } else {
-        builder = builder.position(0., 0.);
-    }
+    builder = builder.position(record.note.x as f64, record.note.y as f64);
 
     let window = builder.build().context("Could not create sticky window")?;
     let app_clone = app.clone();
@@ -376,23 +370,27 @@ pub fn cycle_focus(app: &AppHandle, reverse: bool) -> Result<(), anyhow::Error> 
 }
 
 pub fn fit_text(app: &AppHandle) -> Result<(), anyhow::Error> {
-    app.webview_windows().into_iter().for_each(|(label, window)| {
-        if is_sticky_window_label(&label) && window.is_focused().unwrap_or(false) {
-            log::info!("emitting fit_text to window {}", label);
-            let _ = window.emit_to(EventTarget::webview_window(label), "fit_text", {});
-        }
-    });
+    app.webview_windows()
+        .into_iter()
+        .for_each(|(label, window)| {
+            if is_sticky_window_label(&label) && window.is_focused().unwrap_or(false) {
+                log::info!("emitting fit_text to window {}", label);
+                let _ = window.emit_to(EventTarget::webview_window(label), "fit_text", {});
+            }
+        });
 
     Ok(())
 }
 
 pub fn set_color(app: &AppHandle, index: u8) -> Result<(), anyhow::Error> {
-    app.webview_windows().into_iter().for_each(|(label, window)| {
-        if is_sticky_window_label(&label) && window.is_focused().unwrap_or(false) {
-            log::info!("emitting set color to window {}", label);
-            let _ = window.emit_to(EventTarget::webview_window(label), "set_color", index);
-        }
-    });
+    app.webview_windows()
+        .into_iter()
+        .for_each(|(label, window)| {
+            if is_sticky_window_label(&label) && window.is_focused().unwrap_or(false) {
+                log::info!("emitting set color to window {}", label);
+                let _ = window.emit_to(EventTarget::webview_window(label), "set_color", index);
+            }
+        });
 
     Ok(())
 }

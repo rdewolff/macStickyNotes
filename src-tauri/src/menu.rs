@@ -2,7 +2,7 @@ use std::process::Command;
 
 use anyhow::Context;
 use tauri::menu::{
-    Menu, MenuBuilder, MenuEvent, MenuId, MenuItem, PredefinedMenuItem, Submenu, SubmenuBuilder
+    Menu, MenuBuilder, MenuEvent, MenuId, MenuItem, PredefinedMenuItem, Submenu, SubmenuBuilder,
 };
 use tauri::{AppHandle, Emitter, Manager, Wry};
 use tauri_plugin_log::log;
@@ -11,8 +11,8 @@ use crate::anchor;
 use crate::save_load::{notes_directory, save_settings};
 use crate::settings::MenuSettings;
 use crate::windows::{
-    close_sticky, create_sticky, cycle_focus, emit_to_focused, fit_text, open_note_manager,
-    reset_note_positions, set_color, snap_window, Direction, is_sticky_window_label,
+    close_sticky, create_sticky, cycle_focus, emit_to_focused, fit_text, is_sticky_window_label,
+    open_note_manager, reset_note_positions, set_color, snap_window, Direction,
 };
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
@@ -73,9 +73,27 @@ fn create_window_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error>
                 true,
                 Some("Cmd+Shift+A"),
             )?,
-            &MenuItem::with_id(app, MenuCommand::ManageNotes, "Manage Notes", true, Some("Cmd+Shift+M"))?,
-            &MenuItem::with_id(app, MenuCommand::OpenNotesFolder, "Open Notes Folder", true, None::<&str>)?,
-            &MenuItem::with_id(app, MenuCommand::ResetPositions, "Reset Note Positions", true, None::<&str>)?
+            &MenuItem::with_id(
+                app,
+                MenuCommand::ManageNotes,
+                "Manage Notes",
+                true,
+                Some("Cmd+Shift+M"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                MenuCommand::OpenNotesFolder,
+                "Open Notes Folder",
+                true,
+                None::<&str>,
+            )?,
+            &MenuItem::with_id(
+                app,
+                MenuCommand::ResetPositions,
+                "Reset Note Positions",
+                true,
+                None::<&str>,
+            )?,
         ])
         .separator()
         .items(&[
@@ -95,10 +113,7 @@ fn create_window_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error>
             )?,
         ])
         .separator()
-        .items(&[
-            &settings.bring_to_front,
-            &settings.autostart,
-        ])
+        .items(&[&settings.bring_to_front, &settings.autostart])
         .build()?;
 
     Ok(menu)
@@ -193,17 +208,23 @@ fn create_edit_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error> {
         ])
         .separator()
         .item(&MenuItem::with_id(
-                app,
-                MenuCommand::FitText,
-                "Resize Note to Text",
-                true,
-                Some("Cmd+F"),
-            )?,)
+            app,
+            MenuCommand::FitText,
+            "Resize Note to Text",
+            true,
+            Some("Cmd+F"),
+        )?)
         .separator()
         .items(&[
             &MenuItem::with_id(app, MenuCommand::ZoomIn, "Zoom In", true, Some("Cmd+="))?,
             &MenuItem::with_id(app, MenuCommand::ZoomOut, "Zoom Out", true, Some("Cmd+-"))?,
-            &MenuItem::with_id(app, MenuCommand::ZoomReset, "Reset Zoom", true, Some("Cmd+0"))?,
+            &MenuItem::with_id(
+                app,
+                MenuCommand::ZoomReset,
+                "Reset Zoom",
+                true,
+                Some("Cmd+0"),
+            )?,
         ])
         .build()?;
 
@@ -328,7 +349,7 @@ pub fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
                 MenuCommand::NextNote => cycle_focus(app, false),
                 MenuCommand::PrevNote => cycle_focus(app, true),
                 MenuCommand::FitText => fit_text(app),
-                MenuCommand::Color(index) => set_color(app, index), 
+                MenuCommand::Color(index) => set_color(app, index),
                 MenuCommand::ZoomIn => emit_to_focused(app, "zoom", "in"),
                 MenuCommand::ZoomOut => emit_to_focused(app, "zoom", "out"),
                 MenuCommand::ZoomReset => emit_to_focused(app, "zoom", "reset"),
@@ -341,11 +362,7 @@ pub fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
             } {
                 log::error!("Error executing command: {:?} : {:#}", command, e);
             };
-            if let 
-                MenuCommand::NewNote |
-                MenuCommand::CloseNote |
-                MenuCommand::Color(_) 
-            = command {
+            if let MenuCommand::NewNote | MenuCommand::CloseNote | MenuCommand::Color(_) = command {
                 _ = app.emit("save_request", {});
             };
         }

@@ -85,10 +85,11 @@
     document.body.classList.add("focused");
   });
 
-  appWindow.listen("tauri://blur", () => {
+  appWindow.listen("tauri://blur", async () => {
     titlebarHovered = false;
     document.body.classList.remove("focused");
     editor?.remove_selection();
+    await editor?.save_contents(true);
   });
 
   appWindow.listen<number>("set_color", (event) => {

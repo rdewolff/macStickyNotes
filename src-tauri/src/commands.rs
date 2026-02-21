@@ -63,7 +63,13 @@ pub fn save_contents(
 
     let position = window
         .outer_position()
-        .map_err(|e| format!("Could not get position of window: {} : {}", window.label(), e))?
+        .map_err(|e| {
+            format!(
+                "Could not get position of window: {} : {}",
+                window.label(),
+                e
+            )
+        })?
         .to_logical(scale_factor);
 
     let size = window
@@ -72,15 +78,13 @@ pub fn save_contents(
         .map_err(|e| e.to_string())?
         .to_logical(scale_factor);
 
-    let always_on_top = window
-        .is_always_on_top()
-        .map_err(|e| {
-            format!(
-                "Could not get window always_on_top status: {} : {}",
-                window.label(),
-                e
-            )
-        })?;
+    let always_on_top = window.is_always_on_top().map_err(|e| {
+        format!(
+            "Could not get window always_on_top status: {} : {}",
+            window.label(),
+            e
+        )
+    })?;
 
     let note = Note {
         color,

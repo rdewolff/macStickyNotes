@@ -441,7 +441,10 @@ pub fn load_stickies(app: &AppHandle) -> Result<(), anyhow::Error> {
 
     let records = load_note_records(app)?;
 
-    for record in records.iter().filter(|record| record.status == NoteStatus::Open) {
+    for record in records
+        .iter()
+        .filter(|record| record.status == NoteStatus::Open)
+    {
         if let Err(e) = create_sticky(app, Some(record)) {
             log::error!("Error creating window with payload: {:#}", e);
         }

@@ -76,8 +76,7 @@ fn get_external_windows(own_pid: u32) -> Vec<ExternalWindow> {
                 None => continue,
             };
 
-            let owner_name = get_dict_string(dict_ref, "kCGWindowOwnerName")
-                .unwrap_or_default();
+            let owner_name = get_dict_string(dict_ref, "kCGWindowOwnerName").unwrap_or_default();
 
             let bounds = match get_dict_bounds(dict_ref) {
                 Some(b) => b,
@@ -127,8 +126,7 @@ unsafe fn get_dict_string(dict: CFDictionaryRef, key: &str) -> Option<String> {
         &mut value,
     ) != 0
     {
-        let cf_str =
-            CFString::wrap_under_get_rule(value as core_foundation::string::CFStringRef);
+        let cf_str = CFString::wrap_under_get_rule(value as core_foundation::string::CFStringRef);
         Some(cf_str.to_string())
     } else {
         None
@@ -169,19 +167,19 @@ fn find_nearest_window(
     let sticky_cx = sticky_x + sticky_w / 2.0;
     let sticky_cy = sticky_y + sticky_h / 2.0;
 
-    external_windows
-        .iter()
-        .min_by(|a, b| {
-            let a_cx = a.x + a.width / 2.0;
-            let a_cy = a.y + a.height / 2.0;
-            let dist_a = (sticky_cx - a_cx).powi(2) + (sticky_cy - a_cy).powi(2);
+    external_windows.iter().min_by(|a, b| {
+        let a_cx = a.x + a.width / 2.0;
+        let a_cy = a.y + a.height / 2.0;
+        let dist_a = (sticky_cx - a_cx).powi(2) + (sticky_cy - a_cy).powi(2);
 
-            let b_cx = b.x + b.width / 2.0;
-            let b_cy = b.y + b.height / 2.0;
-            let dist_b = (sticky_cx - b_cx).powi(2) + (sticky_cy - b_cy).powi(2);
+        let b_cx = b.x + b.width / 2.0;
+        let b_cy = b.y + b.height / 2.0;
+        let dist_b = (sticky_cx - b_cx).powi(2) + (sticky_cy - b_cy).powi(2);
 
-            dist_a.partial_cmp(&dist_b).unwrap_or(std::cmp::Ordering::Equal)
-        })
+        dist_a
+            .partial_cmp(&dist_b)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    })
 }
 
 fn find_window_by_id(id: u32, windows: &[ExternalWindow]) -> Option<&ExternalWindow> {
@@ -235,7 +233,11 @@ pub fn unanchor(app: &AppHandle, window: &WebviewWindow) -> Result<(), anyhow::E
     let label = window.label().to_string();
     let state = app.state::<AnchorState>();
     state.anchors.lock().unwrap().remove(&label);
-    let _ = app.emit_to(EventTarget::webview_window(label.clone()), "anchor_lost", ());
+    let _ = app.emit_to(
+        EventTarget::webview_window(label.clone()),
+        "anchor_lost",
+        (),
+    );
 
     log::info!("Unanchored {}", label);
     Ok(())
@@ -250,7 +252,10 @@ pub fn is_anchored(app: &AppHandle, window: &WebviewWindow) -> bool {
         .unwrap_or(false)
 }
 
-pub fn toggle_anchor_to_nearest(app: &AppHandle, window: &WebviewWindow) -> Result<(), anyhow::Error> {
+pub fn toggle_anchor_to_nearest(
+    app: &AppHandle,
+    window: &WebviewWindow,
+) -> Result<(), anyhow::Error> {
     if is_anchored(app, window) {
         unanchor(app, window)?;
     } else {
