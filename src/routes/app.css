@@ -16,6 +16,10 @@
     --sticky-titlebar-height: 30px;
     --sticky-titlebar-button-size: 28px;
     --sticky-corner-radius: 12px;
+    --sticky-corner-top-left: var(--sticky-corner-radius);
+    --sticky-corner-top-right: var(--sticky-corner-radius);
+    --sticky-corner-bottom-right: var(--sticky-corner-radius);
+    --sticky-corner-bottom-left: var(--sticky-corner-radius);
 }
 
 html,
@@ -23,6 +27,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 body {
@@ -36,7 +41,11 @@ body {
 }
 
 .note-container {
-  border-radius: var(--sticky-corner-radius, 12px);
+  border-radius:
+    var(--sticky-corner-top-left, var(--sticky-corner-radius, 12px))
+    var(--sticky-corner-top-right, var(--sticky-corner-radius, 12px))
+    var(--sticky-corner-bottom-right, var(--sticky-corner-radius, 12px))
+    var(--sticky-corner-bottom-left, var(--sticky-corner-radius, 12px));
   overflow: hidden;
   position: relative;
   min-height: calc(100vh - 8px);
@@ -54,25 +63,15 @@ body {
   background: none;
   pointer-events: none;
   z-index: 2;
-  border-radius: var(--sticky-corner-radius, 12px);
+  border-radius:
+    var(--sticky-corner-top-left, var(--sticky-corner-radius, 12px))
+    var(--sticky-corner-top-right, var(--sticky-corner-radius, 12px))
+    var(--sticky-corner-bottom-right, var(--sticky-corner-radius, 12px))
+    var(--sticky-corner-bottom-left, var(--sticky-corner-radius, 12px));
 }
 
 .note-container::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 20px;
-  height: 20px;
-  background: linear-gradient(
-    225deg,
-    rgba(0, 0, 0, 0.08) 0%,
-    rgba(0, 0, 0, 0.03) 50%,
-    transparent 50%
-  );
-  pointer-events: none;
-  z-index: 2;
-  border-radius: 0 0 var(--sticky-corner-radius, 12px) 0;
+  content: none;
 }
 
 input {

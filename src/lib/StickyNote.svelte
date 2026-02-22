@@ -243,7 +243,11 @@
     z-index: 3;
     opacity: 0;
     transition: opacity 0.2s ease;
-    border-radius: var(--sticky-corner-radius, 12px) var(--sticky-corner-radius, 12px) 0 0;
+    border-radius:
+      var(--sticky-corner-top-left, var(--sticky-corner-radius, 12px))
+      var(--sticky-corner-top-right, var(--sticky-corner-radius, 12px))
+      0
+      0;
   }
 
   .titlebar.hover {
