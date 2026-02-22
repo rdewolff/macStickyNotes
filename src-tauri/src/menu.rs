@@ -234,55 +234,13 @@ fn create_edit_submenu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error> {
 fn create_color_menu(app: &AppHandle) -> Result<Submenu<Wry>, anyhow::Error> {
     let menu = SubmenuBuilder::new(app, "Color")
         .items(&[
-            &MenuItem::with_id(
-                app,
-                MenuCommand::Color(0),
-                "Yellow (#FFF9B1)",
-                true,
-                Some("Cmd+1"),
-            )?,
-            &MenuItem::with_id(
-                app,
-                MenuCommand::Color(1),
-                "Blue (#81B7DD)",
-                true,
-                Some("Cmd+2"),
-            )?,
-            &MenuItem::with_id(
-                app,
-                MenuCommand::Color(2),
-                "Green (#65A65B)",
-                true,
-                Some("Cmd+3"),
-            )?,
-            &MenuItem::with_id(
-                app,
-                MenuCommand::Color(3),
-                "Teal (#AAD2CA)",
-                true,
-                Some("Cmd+4"),
-            )?,
-            &MenuItem::with_id(
-                app,
-                MenuCommand::Color(4),
-                "Light Green (#98C260)",
-                true,
-                Some("Cmd+5"),
-            )?,
-            &MenuItem::with_id(
-                app,
-                MenuCommand::Color(5),
-                "Pink (#E1A1B1)",
-                true,
-                Some("Cmd+6"),
-            )?,
-            &MenuItem::with_id(
-                app,
-                MenuCommand::Color(6),
-                "Purple (#B98CB3)",
-                true,
-                Some("Cmd+7"),
-            )?,
+            &MenuItem::with_id(app, MenuCommand::Color(0), "Butter", true, Some("Cmd+1"))?,
+            &MenuItem::with_id(app, MenuCommand::Color(1), "Sky", true, Some("Cmd+2"))?,
+            &MenuItem::with_id(app, MenuCommand::Color(2), "Mint", true, Some("Cmd+3"))?,
+            &MenuItem::with_id(app, MenuCommand::Color(3), "Seafoam", true, Some("Cmd+4"))?,
+            &MenuItem::with_id(app, MenuCommand::Color(4), "Sage", true, Some("Cmd+5"))?,
+            &MenuItem::with_id(app, MenuCommand::Color(5), "Rose", true, Some("Cmd+6"))?,
+            &MenuItem::with_id(app, MenuCommand::Color(6), "Lavender", true, Some("Cmd+7"))?,
         ])
         .build()?;
 

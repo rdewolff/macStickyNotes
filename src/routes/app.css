@@ -1,5 +1,21 @@
 :root {
     overscroll-behavior: none;
+    --sticky-color-1: #f9e7a7;
+    --sticky-color-2: #bddcf6;
+    --sticky-color-3: #bfe6bf;
+    --sticky-color-4: #cfeee8;
+    --sticky-color-5: #d6e8b6;
+    --sticky-color-6: #edc2ce;
+    --sticky-color-7: #d7c2e9;
+    --sticky-default-color: var(--sticky-color-1);
+    --sticky-editor-top-padding: 40px;
+    --sticky-list-indent-left: 1.1em;
+    --sticky-list-item-margin-y: 0.16em;
+    --sticky-list-checkbox-offset-left: -1.25em;
+    --sticky-list-checkbox-width: 1.05em;
+    --sticky-titlebar-height: 30px;
+    --sticky-titlebar-button-size: 28px;
+    --sticky-corner-radius: 12px;
 }
 
 html,
@@ -20,11 +36,11 @@ body {
 }
 
 .note-container {
-  border-radius: 12px;
+  border-radius: var(--sticky-corner-radius, 12px);
   overflow: hidden;
   position: relative;
   min-height: calc(100vh - 8px);
-  background-color: #fff9b1;
+  background-color: var(--sticky-default-color, #f9e7a7);
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.12),
     0 1px 3px rgba(0, 0, 0, 0.08),
@@ -35,15 +51,10 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.15) 0%,
-    transparent 40%,
-    rgba(0, 0, 0, 0.04) 100%
-  );
+  background: none;
   pointer-events: none;
   z-index: 2;
-  border-radius: 12px;
+  border-radius: var(--sticky-corner-radius, 12px);
 }
 
 .note-container::after {
@@ -61,7 +72,7 @@ body {
   );
   pointer-events: none;
   z-index: 2;
-  border-radius: 0 0 12px 0;
+  border-radius: 0 0 var(--sticky-corner-radius, 12px) 0;
 }
 
 input {
@@ -109,10 +120,10 @@ input:focus {
     position: relative;
     top: 0;
     color: #000;
-    margin-left: -1.5em;
+    margin-left: var(--sticky-list-checkbox-offset-left, -1.25em);
     margin-right: 0.3em;
     text-align: center;
-    width: 1.2em;
+    width: var(--sticky-list-checkbox-width, 1.05em);
 }
 
 .ql-editor {
@@ -120,7 +131,7 @@ input:focus {
     min-height: calc(100vh - 8px);
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 28px 12px 12px 12px;
+    padding: var(--sticky-editor-top-padding, 40px) 12px 12px 12px;
     color: rgba(0, 0, 0, 0.82);
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -159,12 +170,12 @@ input:focus {
 
 .ql-container .ql-editor ol,
 .ql-container .ql-editor ul {
-    padding-left: 1.35em;
+    padding-left: var(--sticky-list-indent-left, 1.1em);
     margin: 0.24em 0;
 }
 
 .ql-container .ql-editor li {
-    margin: 0.16em 0;
+    margin: var(--sticky-list-item-margin-y, 0.16em) 0;
 }
 
 .ql-container .ql-editor blockquote {

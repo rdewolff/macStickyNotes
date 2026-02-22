@@ -7,7 +7,9 @@ use tauri_plugin_updater::UpdaterExt;
 
 use crate::commands::*;
 use crate::menu::{create_menu, handle_menu_event};
-use crate::save_load::{load_settings, load_stickies};
+use crate::save_load::{
+    load_settings, load_stickies, restart_notes_directory_watcher, NotesFolderWatcherState,
+};
 
 mod anchor;
 mod commands;
@@ -45,6 +47,8 @@ fn setup(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 
     app.manage(menu_settings);
     app.manage(anchor::AnchorState::default());
+    app.manage(NotesFolderWatcherState::default());
+    restart_notes_directory_watcher(app.handle())?;
 
     let menu = create_menu(app.handle())?;
     app.set_menu(menu)?;
@@ -106,6 +110,10 @@ pub fn run() {
             archive_note,
             delete_note,
             open_notes_folder,
+            get_notes_folder,
+            set_notes_folder,
+            choose_notes_folder,
+            load_theme_stylesheet,
         ])
         .setup(setup)
         .build(tauri::generate_context!())

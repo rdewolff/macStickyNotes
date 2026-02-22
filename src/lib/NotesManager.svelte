@@ -23,6 +23,7 @@
   let error = $state("");
   let activeFilter = $state<"all" | NoteStatus>("all");
   let busyNoteId = $state("");
+  let notesFolderPath = $state("");
 
   const dateFormatter = new Intl.DateTimeFormat(undefined, {
     year: "numeric",
@@ -42,6 +43,14 @@
       error = String(e);
     } finally {
       loading = false;
+    }
+  }
+
+  async function refreshNotesFolder() {
+    try {
+      notesFolderPath = await invoke<string>("get_notes_folder");
+    } catch (e) {
+      error = String(e);
     }
   }
 
@@ -90,17 +99,53 @@
     }
   }
 
+  async function chooseNotesFolder() {
+    try {
+      const selectedPath = await invoke<string | null>("choose_notes_folder");
+      if (!selectedPath) {
+        return;
+      }
+
+      notesFolderPath = selectedPath;
+      await refreshNotes();
+    } catch (e) {
+      error = String(e);
+    }
+  }
+
+  async function setNotesFolderPath() {
+    const enteredPath = prompt("Set notes folder path", notesFolderPath);
+    if (enteredPath === null) {
+      return;
+    }
+
+    try {
+      notesFolderPath = await invoke<string>("set_notes_folder", {
+        folderPath: enteredPath,
+      });
+      await refreshNotes();
+    } catch (e) {
+      error = String(e);
+    }
+  }
+
   function noteCount(status: NoteStatus) {
     return notes.filter((note) => note.status === status).length;
   }
 
   onMount(() => {
     void refreshNotes();
+    void refreshNotesFolder();
 
     const unlisteners: Array<() => void> = [];
 
     (async () => {
-      unlisteners.push(await appWindow.listen("notes_changed", refreshNotes));
+      unlisteners.push(
+        await appWindow.listen("notes_changed", () => {
+          void refreshNotes();
+          void refreshNotesFolder();
+        }),
+      );
       unlisteners.push(await appWindow.listen("tauri://focus", refreshNotes));
     })();
 
@@ -117,8 +162,20 @@
     <div>
       <h1>Notes Manager</h1>
       <p>Restore closed notes, archive old ones, and delete permanently.</p>
+      <p class="folder-path" title={notesFolderPath}>
+        Storage folder: {notesFolderPath || "Loading..."}
+      </p>
+      {#if notesFolderPath}
+        <p class="folder-path" title={`${notesFolderPath}/theme.css`}>
+          Theme file: {notesFolderPath}/theme.css
+        </p>
+      {/if}
     </div>
-    <button class="open-folder" onclick={openNotesFolder}>Open Notes Folder</button>
+    <div class="folder-actions">
+      <button class="set-folder" onclick={setNotesFolderPath}>Set Path</button>
+      <button class="choose-folder" onclick={chooseNotesFolder}>Choose Folder</button>
+      <button class="open-folder" onclick={openNotesFolder}>Open Folder</button>
+    </div>
   </header>
 
   <div class="status-row">
@@ -166,18 +223,15 @@
               >
                 Archive
               </button>
+            {:else if activeFilter === "archived"}
+              <button
+                class="danger"
+                onclick={() => runNoteAction("delete_note", note.id)}
+                disabled={busyNoteId === note.id}
+              >
+                Delete
+              </button>
             {/if}
-            <button
-              class="danger"
-              onclick={() => {
-                if (confirm("Delete this note permanently?")) {
-                  void runNoteAction("delete_note", note.id);
-                }
-              }}
-              disabled={busyNoteId === note.id}
-            >
-              Delete
-            </button>
           </div>
         </article>
       {/each}
@@ -201,6 +255,8 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
     padding: 18px 20px 14px;
     border-bottom: 1px solid rgba(39, 49, 58, 0.14);
     user-select: none;
@@ -218,39 +274,87 @@
     opacity: 0.8;
   }
 
-  .open-folder {
+  .folder-path {
+    margin-top: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    opacity: 0.75;
+    max-width: min(540px, 100%);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .folder-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    -webkit-app-region: no-drag;
+  }
+
+  .folder-actions button {
     border: 0;
     border-radius: 7px;
     padding: 8px 12px;
-    background: #1f5c89;
-    color: #fff;
     font-size: 12px;
     cursor: pointer;
+    min-height: 34px;
+  }
+
+  .set-folder {
+    background: #5e5c57;
+    color: #fff;
+  }
+
+  .choose-folder {
+    background: #3d6f4f;
+    color: #fff;
+  }
+
+  .open-folder {
+    background: #1f5c89;
+    color: #fff;
   }
 
   .status-row {
-    display: flex;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    gap: 10px;
     padding: 12px 16px;
     border-bottom: 1px solid rgba(39, 49, 58, 0.1);
-    overflow-x: auto;
   }
 
   .status-row button {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 36px;
     border: 1px solid rgba(39, 49, 58, 0.2);
     border-radius: 999px;
-    padding: 6px 10px;
+    padding: 6px 12px;
     background: rgba(255, 255, 255, 0.65);
     color: #27313a;
-    font-size: 12px;
+    font-size: 13px;
+    line-height: 1.1;
+    font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
+    box-sizing: border-box;
   }
 
   .status-row button.active {
     background: #27313a;
     color: #fff;
     border-color: #27313a;
+  }
+
+  @media (max-width: 760px) {
+    .status-row {
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+    }
   }
 
   .error {

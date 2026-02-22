@@ -1,4 +1,4 @@
-use std::{iter::once, process::Command};
+use std::{iter::once, path::PathBuf, process::Command};
 
 use anyhow::Context;
 use tauri::{Emitter, Manager};
@@ -6,8 +6,10 @@ use tauri::{Emitter, Manager};
 use crate::{
     anchor,
     save_load::{
-        delete_note as delete_note_record, list_notes, mark_note_archived, mark_note_open,
-        notes_directory, save_sticky, Note, NoteListItem,
+        delete_note as delete_note_record, get_notes_directory_path, list_notes,
+        load_theme_stylesheet as load_theme_stylesheet_content, mark_note_archived, mark_note_open,
+        notes_directory, restart_notes_directory_watcher, save_sticky, set_notes_directory_path,
+        Note, NoteListItem, NoteStatus,
     },
     settings::MenuSettings,
     windows::{
@@ -153,6 +155,31 @@ pub fn archive_note(app: tauri::AppHandle, note_id: String) -> Result<(), String
 
 #[tauri::command]
 pub fn delete_note(app: tauri::AppHandle, note_id: String) -> Result<(), String> {
+    let status = list_notes(&app)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .find(|record| record.id == note_id)
+        .map(|record| record.status)
+        .ok_or_else(|| format!("Note not found: {note_id}"))?;
+
+    if status != NoteStatus::Archived {
+        return Err("Only archived notes can be deleted permanently".to_string());
+    }
+
+    let confirmed = matches!(
+        rfd::MessageDialog::new()
+            .set_title("Delete archived note?")
+            .set_description("Are you sure you want to permanently delete this archived note?")
+            .set_level(rfd::MessageLevel::Warning)
+            .set_buttons(rfd::MessageButtons::YesNo)
+            .show(),
+        rfd::MessageDialogResult::Yes
+    );
+
+    if !confirmed {
+        return Ok(());
+    }
+
     close_sticky_by_note_id(&app, &note_id).map_err(|e| e.to_string())?;
     delete_note_record(&app, &note_id).map_err(|e| e.to_string())?;
     let _ = app.emit("notes_changed", ());
@@ -188,4 +215,51 @@ pub fn open_notes_folder(app: tauri::AppHandle) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn get_notes_folder(app: tauri::AppHandle) -> Result<String, String> {
+    get_notes_directory_path(&app)
+        .map(|path| path.to_string_lossy().to_string())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn set_notes_folder(app: tauri::AppHandle, folder_path: String) -> Result<String, String> {
+    let cleaned = folder_path.trim();
+    if cleaned.is_empty() {
+        return Err("Folder path cannot be empty".to_string());
+    }
+
+    let configured = set_notes_directory_path(&app, PathBuf::from(cleaned))
+        .map_err(|e| e.to_string())?
+        .to_string_lossy()
+        .to_string();
+    restart_notes_directory_watcher(&app).map_err(|e| e.to_string())?;
+    let _ = app.emit("notes_changed", ());
+    Ok(configured)
+}
+
+#[tauri::command]
+pub fn choose_notes_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let current_dir = get_notes_directory_path(&app).ok();
+    let mut dialog = rfd::FileDialog::new();
+    if let Some(path) = current_dir {
+        dialog = dialog.set_directory(path);
+    }
+
+    let Some(path) = dialog.pick_folder() else {
+        return Ok(None);
+    };
+
+    let configured = set_notes_directory_path(&app, path).map_err(|e| e.to_string())?;
+    restart_notes_directory_watcher(&app).map_err(|e| e.to_string())?;
+    let _ = app.emit("notes_changed", ());
+
+    Ok(Some(configured.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+pub fn load_theme_stylesheet(app: tauri::AppHandle) -> Result<String, String> {
+    load_theme_stylesheet_content(&app).map_err(|e| e.to_string())
 }

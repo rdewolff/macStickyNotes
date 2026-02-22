@@ -1,15 +1,16 @@
 use anyhow::{bail, Context};
 use tauri::{
-    AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize, WebviewUrl,
-    WebviewWindow, WindowEvent,
+    AppHandle, Emitter, EventTarget, LogicalPosition, Manager, PhysicalPosition, PhysicalSize,
+    WebviewUrl, WebviewWindow, WindowEvent,
 };
 use tauri_plugin_log::log;
 
 use crate::save_load::{
-    generate_note_id, make_default_record, mark_note_closed, save_sticky, NoteRecord,
+    generate_note_id, make_default_record, mark_note_closed, save_sticky, Note, NoteRecord,
 };
 
 const GAP: i32 = 20;
+const VISIBLE_PADDING: f64 = 32.0;
 const STICKY_WINDOW_PREFIX: &str = "sticky_";
 pub const MANAGER_WINDOW_LABEL: &str = "manager";
 
@@ -223,13 +224,109 @@ pub fn snap_window(
     Ok(())
 }
 
+fn logical_monitor_bounds(monitor: &tauri::Monitor) -> (f64, f64, f64, f64) {
+    let scale = monitor.scale_factor();
+    let position = monitor.position().to_logical::<f64>(scale);
+    let size = monitor.size().to_logical::<f64>(scale);
+    (
+        position.x,
+        position.y,
+        position.x + size.width,
+        position.y + size.height,
+    )
+}
+
+fn monitor_contains_note(
+    monitor: &tauri::Monitor,
+    note_x: f64,
+    note_y: f64,
+    note_width: f64,
+    note_height: f64,
+) -> bool {
+    let (left, top, right, bottom) = logical_monitor_bounds(monitor);
+    let note_right = note_x + note_width;
+    let note_bottom = note_y + note_height;
+
+    !(note_right < left || note_x > right || note_bottom < top || note_y > bottom)
+}
+
+fn clamp_note_within_bounds(
+    note_x: f64,
+    note_y: f64,
+    note_width: f64,
+    note_height: f64,
+    bounds: (f64, f64, f64, f64),
+) -> (f64, f64) {
+    let (left, top, right, bottom) = bounds;
+    let avail_width = (right - left).max(0.0);
+    let avail_height = (bottom - top).max(0.0);
+
+    let width = note_width.min(avail_width);
+    let height = note_height.min(avail_height);
+
+    let min_x = left + VISIBLE_PADDING;
+    let max_x = right - width - VISIBLE_PADDING;
+    let min_y = top + VISIBLE_PADDING;
+    let max_y = bottom - height - VISIBLE_PADDING;
+
+    let x = if min_x <= max_x {
+        note_x.clamp(min_x, max_x)
+    } else {
+        left
+    };
+
+    let y = if min_y <= max_y {
+        note_y.clamp(min_y, max_y)
+    } else {
+        top
+    };
+
+    (x, y)
+}
+
+fn ensure_note_visible(app: &AppHandle, note: &Note) -> (f64, f64) {
+    let note_x = note.x as f64;
+    let note_y = note.y as f64;
+    let note_width = note.width as f64;
+    let note_height = note.height as f64;
+
+    let monitors = match app.available_monitors() {
+        Ok(monitors) if !monitors.is_empty() => monitors,
+        _ => return (note_x, note_y),
+    };
+
+    if monitors
+        .iter()
+        .any(|monitor| monitor_contains_note(monitor, note_x, note_y, note_width, note_height))
+    {
+        return (note_x, note_y);
+    }
+
+    let target_bounds = app
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .map(|monitor| logical_monitor_bounds(&monitor))
+        .or_else(|| {
+            monitors
+                .first()
+                .map(|monitor| logical_monitor_bounds(monitor))
+        });
+
+    if let Some(bounds) = target_bounds {
+        return clamp_note_within_bounds(note_x, note_y, note_width, note_height, bounds);
+    }
+
+    (note_x, note_y)
+}
+
 pub fn create_sticky(
     app: &AppHandle,
     payload: Option<&NoteRecord>,
 ) -> Result<WebviewWindow, anyhow::Error> {
     log::debug!("Creating new sticky window");
 
-    let record = if let Some(record) = payload {
+    let mut record = if let Some(record) = payload {
         record.clone()
     } else {
         let note_id = generate_note_id();
@@ -238,9 +335,22 @@ pub fn create_sticky(
         record
     };
 
+    let (initial_x, initial_y) = ensure_note_visible(app, &record.note);
+    let corrected_x = initial_x.round() as i32;
+    let corrected_y = initial_y.round() as i32;
+
+    if record.note.x != corrected_x || record.note.y != corrected_y {
+        record.note.x = corrected_x;
+        record.note.y = corrected_y;
+        save_sticky(app, &record.id, record.note.clone())?;
+    }
+
     let label = sticky_label(&record.id);
 
     if let Some(existing) = app.get_webview_window(&label) {
+        let _ = existing.set_position(LogicalPosition::new(initial_x, initial_y));
+        let _ = existing.unminimize();
+        let _ = existing.show();
         existing.set_focus().ok();
         return Ok(existing);
     }
@@ -263,9 +373,12 @@ pub fn create_sticky(
             .inner_size(record.note.width as f64, record.note.height as f64)
             .always_on_top(record.note.always_on_top);
 
-    builder = builder.position(record.note.x as f64, record.note.y as f64);
+    builder = builder.position(initial_x, initial_y);
 
     let window = builder.build().context("Could not create sticky window")?;
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
     let app_clone = app.clone();
     window.on_window_event(move |event| {
         if let WindowEvent::CloseRequested { .. } = event {

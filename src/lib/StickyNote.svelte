@@ -14,24 +14,31 @@
   } from "@mdi/js";
   import "@jamescoyle/svg-icon";
 
-  const colors = [
-    "#fff9b1",
-    "#81B7DD",
-    "#65A65B",
-    "#AAD2CA",
-    "#98C260",
-    "#E1A1B1",
-    "#B98CB3",
+  const fallbackColors = [
+    "#f9e7a7",
+    "#bddcf6",
+    "#bfe6bf",
+    "#cfeee8",
+    "#d6e8b6",
+    "#edc2ce",
+    "#d7c2e9",
   ];
   const appWindow = webviewWindow.getCurrentWebviewWindow();
 
   let editor: Editor;
+  let colors = $state<string[]>([...fallbackColors]);
 
   let colorMenuOpen = $state(false);
   let titlebarHovered = $state(false);
   let alwaysOnTop = $state(false);
   let anchored = $state(false);
   let anchorTarget = $state("");
+
+  type ExternalNoteUpdatePayload = {
+    contents: string;
+    color: string;
+    zoom: number;
+  };
 
   async function toggleAlwaysOnTop() {
     alwaysOnTop = !alwaysOnTop;
@@ -71,6 +78,18 @@
   function setNoteColor(color: string) {
     const container = document.getElementById("note-container");
     if (container) container.style.backgroundColor = color;
+  }
+
+  function refreshPaletteFromTheme() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const style = getComputedStyle(document.documentElement);
+    colors = fallbackColors.map((fallback, index) => {
+      const configured = style.getPropertyValue(`--sticky-color-${index + 1}`).trim();
+      return configured || fallback;
+    });
   }
 
   function handleColorClick(e: MouseEvent) {
@@ -121,6 +140,20 @@
     editor?.save_contents(true);
   });
 
+  appWindow.listen<ExternalNoteUpdatePayload>("external_note_update", (event) => {
+    const container = document.getElementById("note-container");
+    if (container) {
+      if (event.payload.color) {
+        container.style.backgroundColor = event.payload.color;
+      }
+      if (event.payload.zoom && Number.isFinite(event.payload.zoom)) {
+        container.style.zoom = String(event.payload.zoom);
+      }
+    }
+
+    editor?.apply_external_contents(event.payload.contents);
+  });
+
   let moveTimer: number | undefined = undefined;
   function saveDebounce() {
     if (moveTimer) {
@@ -135,10 +168,16 @@
   appWindow.listen("tauri://resize", saveDebounce);
 
   onMount(() => {
+    refreshPaletteFromTheme();
+    const themeListener = () => refreshPaletteFromTheme();
+    window.addEventListener("sticky-theme-updated", themeListener);
+
     // @ts-expect-error - set by tauri initialization script for sticky windows
     if (!window.__STICKY_INIT__) {
       document.body.classList.add("focused");
-      return;
+      return () => {
+        window.removeEventListener("sticky-theme-updated", themeListener);
+      };
     }
 
     // @ts-expect-error - set by tauri initialization script for sticky windows
@@ -149,25 +188,29 @@
       const container = document.getElementById("note-container");
       if (container) container.style.zoom = String(initZoom);
     }
+
+    return () => {
+      window.removeEventListener("sticky-theme-updated", themeListener);
+    };
   });
 </script>
 
 <div class="note-container" id="note-container">
   <div data-tauri-drag-region class="titlebar" class:hover={titlebarHovered}>
     <button class="titlebar-button" id="titlebar-close" onclick={closeNote} aria-label="close note">
-      <svg-icon class="cross" type="mdi" path={mdiClose} size="15"></svg-icon>
+      <svg-icon class="cross" type="mdi" path={mdiClose} size="18"></svg-icon>
     </button>
     <button class="titlebar-button" id="titlebar-pin" onclick={toggleAlwaysOnTop} aria-label="pin/unpin note">
-      <svg-icon class="cross" type="mdi" path={alwaysOnTop ? mdiPinOff : mdiPin} size="10"></svg-icon>
+      <svg-icon class="cross" type="mdi" path={alwaysOnTop ? mdiPinOff : mdiPin} size="14"></svg-icon>
     </button>
     <button class="titlebar-button" id="titlebar-anchor" onclick={toggleAnchor} aria-label="anchor to window" class:anchored={anchored}>
-      <svg-icon class="cross" type="mdi" path={anchored ? mdiLinkOff : mdiLink} size="10"></svg-icon>
+      <svg-icon class="cross" type="mdi" path={anchored ? mdiLinkOff : mdiLink} size="14"></svg-icon>
     </button>
     <button class="titlebar-button" id="titlebar-manager" onclick={openManager} aria-label="manage notes">
-      <svg-icon class="cross" type="mdi" path={mdiFormatListBulleted} size="12"></svg-icon>
+      <svg-icon class="cross" type="mdi" path={mdiFormatListBulleted} size="15"></svg-icon>
     </button>
     <button class="titlebar-button" id="titlebar-color" onclick={toggleColorMenu} aria-label="select note color">
-      <svg-icon class="cross" type="mdi" path={mdiPalette} size="10"></svg-icon>
+      <svg-icon class="cross" type="mdi" path={mdiPalette} size="14"></svg-icon>
     </button>
     {#if anchored}
       <span class="anchor-badge">{anchorTarget}</span>
@@ -188,7 +231,7 @@
 
 <style>
   .titlebar {
-    height: 24px;
+    height: var(--sticky-titlebar-height, 30px);
     user-select: none;
     display: flex;
     justify-content: flex-start;
@@ -199,24 +242,23 @@
     right: 4px;
     z-index: 3;
     opacity: 0;
-    transition: opacity 0.2s ease, background-color 0.2s ease;
-    border-radius: 12px 12px 0 0;
+    transition: opacity 0.2s ease;
+    border-radius: var(--sticky-corner-radius, 12px) var(--sticky-corner-radius, 12px) 0 0;
   }
 
   .titlebar.hover {
     opacity: 1;
-    background: rgba(0, 0, 0, 0.08);
   }
 
   button {
     border: 0;
     margin: 0;
     padding: 0;
-    height: 24px;
-    width: 24px;
+    height: var(--sticky-titlebar-button-size, 28px);
+    width: var(--sticky-titlebar-button-size, 28px);
     background-color: transparent;
-    border-radius: 4px;
-    transition: background-color 0.15s ease;
+    border-radius: 6px;
+    transition: background-color 0.15s ease, transform 0.15s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -224,13 +266,14 @@
 
   button:hover {
     background-color: rgba(0, 0, 0, 0.1);
+    transform: scale(1.08);
   }
 
   .color {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
-    margin: 4px 2px;
+    margin: 5px 2px;
   }
 
   .anchored {
@@ -239,7 +282,7 @@
 
   .anchor-badge {
     font-size: 10px;
-    line-height: 24px;
+    line-height: var(--sticky-titlebar-height, 30px);
     padding: 0 6px;
     opacity: 0.6;
     white-space: nowrap;

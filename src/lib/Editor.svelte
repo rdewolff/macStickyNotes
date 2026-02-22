@@ -29,10 +29,20 @@
   let quill: undefined | Quill = $state();
   let saveTimeout: null | number = null;
   let noteId = $state("");
+  let applyingExternalUpdate = false;
+
+  function defaultNoteColor(): string {
+    const style = getComputedStyle(document.documentElement);
+    return (
+      style.getPropertyValue("--sticky-default-color").trim() ||
+      style.getPropertyValue("--sticky-color-1").trim() ||
+      "#f9e7a7"
+    );
+  }
 
   function getNoteColor(): string {
     const container = document.getElementById("note-container");
-    return container?.style.backgroundColor || "#fff9b1";
+    return container?.style.backgroundColor || defaultNoteColor();
   }
 
   function getZoomLevel(): number {
@@ -133,6 +143,25 @@
     quill?.setSelection(null);
   }
 
+  export function apply_external_contents(contents: string) {
+    if (!quill) {
+      return;
+    }
+
+    applyingExternalUpdate = true;
+    if (isMeaningfulSerializedContents(contents)) {
+      const delta = parseDelta(contents);
+      if (delta) {
+        quill.setContents(delta as any);
+      } else {
+        quill.setText(contents);
+      }
+    } else {
+      quill.setText("");
+    }
+    applyingExternalUpdate = false;
+  }
+
   async function growWindowToFitEditorContent(editor: HTMLElement) {
     const overflowHeight = Math.ceil(editor.scrollHeight - editor.clientHeight);
     if (overflowHeight <= RESIZE_THRESHOLD_PX) {
@@ -150,7 +179,7 @@
   onMount(async () => {
     quill = new Quill("#editor", {
       theme: "bubble",
-      placeholder: "Empty Note",
+      placeholder: "",
       modules: {
         toolbar: false,
       },
@@ -184,11 +213,13 @@
     }
 
     if (noteContainer) {
-      noteContainer.style.backgroundColor = init?.color || "#fff9b1";
+      noteContainer.style.backgroundColor = init?.color || defaultNoteColor();
     }
 
-    quill.on("text-change", async () => {
-      void save_contents();
+    quill.on("text-change", async (_delta, _oldDelta, source) => {
+      if (!applyingExternalUpdate && source !== "silent") {
+        void save_contents();
+      }
 
       const editor = document.querySelector(".ql-editor");
       if (editor instanceof HTMLElement) {
